@@ -63,9 +63,11 @@ void parallelSort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
   std::sample(data.begin(), data.end(), local_samples.begin(),
               oversampling_ratio, std::mt19937{seed});
   std::vector<T> global_samples(local_samples.size() * size);
-  MPI_Allgather(local_samples.data(), local_samples.size(), MPI_INT,
-                global_samples.data(), local_samples.size(), MPI_INT, comm);
-
+  MPI_Allgather(local_samples.data(), local_samples.size(),
+                kamping::mpi_datatype<T>(), global_samples.data(),
+                local_samples.size(), kamping::mpi_datatype<T>(), comm);
+  kamping::measurements::timer().stop_and_append();
+  kamping::measurements::timer().synchronize_and_start("split_buckets");
   pick_splitters(size - 1, oversampling_ratio, global_samples);
   auto buckets = build_buckets(data, global_samples);
   std::vector<int> sCounts, sDispls, rCounts(size), rDispls(size + 1);
@@ -99,8 +101,9 @@ void parallelSortImproved(MPI_Comm comm, std::vector<T> &data, size_t seed) {
   std::sample(data.begin(), data.end(), local_samples.begin(),
               oversampling_ratio, std::mt19937{seed});
   std::vector<T> global_samples(local_samples.size() * size);
-  MPI_Allgather(local_samples.data(), local_samples.size(), MPI_INT,
-                global_samples.data(), local_samples.size(), MPI_INT, comm);
+  MPI_Allgather(local_samples.data(), local_samples.size(),
+                kamping::mpi_datatype<T>(), global_samples.data(),
+                local_samples.size(), kamping::mpi_datatype<T>(), comm);
 
   pick_splitters(size - 1, oversampling_ratio, global_samples);
   auto buckets = build_buckets(data, global_samples);
