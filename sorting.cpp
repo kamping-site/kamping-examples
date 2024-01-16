@@ -66,8 +66,6 @@ void parallelSort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
   MPI_Allgather(local_samples.data(), local_samples.size(),
                 kamping::mpi_datatype<T>(), global_samples.data(),
                 local_samples.size(), kamping::mpi_datatype<T>(), comm);
-  kamping::measurements::timer().stop_and_append();
-  kamping::measurements::timer().synchronize_and_start("split_buckets");
   pick_splitters(size - 1, oversampling_ratio, global_samples);
   auto buckets = build_buckets(data, global_samples);
   std::vector<int> sCounts, sDispls, rCounts(size), rDispls(size + 1);
