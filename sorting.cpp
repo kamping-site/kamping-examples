@@ -84,8 +84,8 @@ void parallelSort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
   }
   std::vector<T> rData(rDispls.back()); // data exchange
   MPI_Alltoallv(data.data(), sCounts.data(), sDispls.data(),
-                boost::mpi::get_mpi_datatype<T>(), rData.data(), rCounts.data(),
-                rDispls.data(), boost::mpi::get_mpi_datatype<T>(), comm);
+                kamping::mpi_datatype<T>(), rData.data(), rCounts.data(),
+                rDispls.data(), kamping::mpi_datatype<T>(), comm);
   std::sort(rData.begin(), rData.end());
   rData.swap(data);
 }
@@ -94,7 +94,6 @@ void parallelSortImproved(MPI_Comm comm, std::vector<T> &data, size_t seed) {
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
-  std::mt19937 eng(seed);
   const size_t oversampling_ratio = 16 * std::log2(size) + 1;
   std::vector<T> local_samples(oversampling_ratio);
   std::sample(data.begin(), data.end(), local_samples.begin(),
@@ -119,8 +118,8 @@ void parallelSortImproved(MPI_Comm comm, std::vector<T> &data, size_t seed) {
   std::exclusive_scan(rCounts.begin(), rCounts.end(), rDispls.begin(), 0);
   std::vector<T> rData(rDispls.back() + rCounts.back());
   MPI_Alltoallv(data.data(), sCounts.data(), sDispls.data(),
-                boost::mpi::get_mpi_datatype<T>(), rData.data(), rCounts.data(),
-                rDispls.data(), boost::mpi::get_mpi_datatype<T>(), comm);
+                kamping::mpi_datatype<T>(), rData.data(), rCounts.data(),
+                rDispls.data(), kamping::mpi_datatype<T>(), comm);
   std::sort(rData.begin(), rData.end());
   rData.swap(data);
 }
