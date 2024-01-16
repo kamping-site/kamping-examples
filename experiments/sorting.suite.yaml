@@ -1,0 +1,12 @@
+name: sorting
+executable: sorting
+ncores: [1, 2, 4]
+time_limit: 2
+threads_per_rank: [1]
+graphs:
+  - generator: dummy
+    name: random_array
+    n_local: 1000000
+config:
+  - algorithm: [kamping, mpl, mpi]
+    iterations: [5]
