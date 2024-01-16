@@ -89,6 +89,41 @@ void parallelSort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
   std::sort(rData.begin(), rData.end());
   rData.swap(data);
 }
+template <typename T>
+void parallelSortImproved(MPI_Comm comm, std::vector<T> &data, size_t seed) {
+  int rank, size;
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &size);
+  std::mt19937 eng(seed);
+  const size_t oversampling_ratio = 16 * std::log2(size) + 1;
+  std::vector<T> local_samples(oversampling_ratio);
+  std::sample(data.begin(), data.end(), local_samples.begin(),
+              oversampling_ratio, std::mt19937{seed});
+  std::vector<T> global_samples(local_samples.size() * size);
+  MPI_Allgather(local_samples.data(), local_samples.size(), MPI_INT,
+                global_samples.data(), local_samples.size(), MPI_INT, comm);
+
+  pick_splitters(size - 1, oversampling_ratio, global_samples);
+  auto buckets = build_buckets(data, global_samples);
+  std::vector<int> sCounts, sDispls, rCounts(size), rDispls(size);
+  int send_pos = 0;
+  for (auto &bucket : buckets) {
+    data.insert(data.end(), bucket.begin(), bucket.end());
+    sCounts.push_back(bucket.size());
+    sDispls.push_back(send_pos);
+    send_pos += bucket.size();
+  }
+  MPI_Alltoall(sCounts.data(), 1, MPI_INT, rCounts.data(), 1, MPI_INT, comm);
+
+  // exclusive prefix sum of recv displacements
+  std::exclusive_scan(rCounts.begin(), rCounts.end(), rDispls.begin(), 0);
+  std::vector<T> rData(rDispls.back() + rCounts.back());
+  MPI_Alltoallv(data.data(), sCounts.data(), sDispls.data(),
+                boost::mpi::get_mpi_datatype<T>(), rData.data(), rCounts.data(),
+                rDispls.data(), boost::mpi::get_mpi_datatype<T>(), comm);
+  std::sort(rData.begin(), rData.end());
+  rData.swap(data);
+}
 
 template <typename T>
 void parallelSortKaMPIng(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
@@ -221,7 +256,7 @@ auto generate_data(size_t n_local, size_t seed) -> std::vector<T> {
 }
 
 void log_results(std::string const &json_output_path,
-                 std::string const &algorithm, size_t n_local, size_t seed) {
+                 std::string const &algorithm, size_t n_local, size_t seed, bool correct) {
   std::unique_ptr<std::ostream> output_stream;
   if (json_output_path == "stdout") {
     output_stream = std::make_unique<std::ostream>(std::cout.rdbuf());
@@ -242,7 +277,8 @@ void log_results(std::string const &json_output_path,
     *output_stream << "  \"p\": " << mpl::environment::comm_world().size()
                    << ",\n";
     *output_stream << "  \"n_local\": " << n_local << ",\n";
-    *output_stream << "  \"seed\": " << seed << "\n";
+    *output_stream << "  \"seed\": " << seed << ",\n";
+    *output_stream << "  \"correct\": " << std::boolalpha << correct << "\n";
     *output_stream << "}\n";
     *output_stream << "}";
   }
@@ -270,21 +306,24 @@ int main(int argc, char *argv[]) {
   using element_type = uint64_t;
 
   auto original_data = generate_data<element_type>(n_local, seed);
+  bool correct = false;
   auto do_run = [&](auto &&algo) {
+    if (check) {
+      auto data = original_data;
+      algo(MPI_COMM_WORLD, data, seed);
+      correct = globally_sorted(MPI_COMM_WORLD, data, original_data);
+    }
     for (size_t iteration = 0; iteration < iterations; iteration++) {
       auto data = original_data;
       kamping::measurements::timer().synchronize_and_start("total_time");
       algo(MPI_COMM_WORLD, data, seed);
       kamping::measurements::timer().stop_and_append();
     }
-    if (check) {
-      auto data = original_data;
-      algo(MPI_COMM_WORLD, data, seed);
-      globally_sorted(MPI_COMM_WORLD, data, original_data);
-    }
   };
   if (algorithm == "mpi") {
     do_run(parallelSort<element_type>);
+  } else if (algorithm == "mpi_new") {
+    do_run(parallelSortImproved<element_type>);
   } else if (algorithm == "kamping") {
     do_run(parallelSortKaMPIng<element_type>);
   } else if (algorithm == "boost") {
@@ -296,6 +335,6 @@ int main(int argc, char *argv[]) {
   } else {
     throw std::runtime_error("unsupported algorithm");
   }
-  log_results(json_output_path, algorithm, n_local, seed);
+  log_results(json_output_path, algorithm, n_local, seed, correct);
   return 0;
 }
