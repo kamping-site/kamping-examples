@@ -57,17 +57,22 @@ void parallelSort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
-  std::mt19937 eng(seed);
+  kamping::measurements::timer().synchronize_and_start("sampling");
   const size_t oversampling_ratio = 16 * std::log2(size) + 1;
   std::vector<T> local_samples(oversampling_ratio);
   std::sample(data.begin(), data.end(), local_samples.begin(),
               oversampling_ratio, std::mt19937{seed});
+  kamping::measurements::timer().stop_and_append();
+  kamping::measurements::timer().synchronize_and_start("gather_samples");
   std::vector<T> global_samples(local_samples.size() * size);
   MPI_Allgather(local_samples.data(), local_samples.size(), MPI_INT,
                 global_samples.data(), local_samples.size(), MPI_INT, comm);
-
+  kamping::measurements::timer().stop_and_append();
+  kamping::measurements::timer().synchronize_and_start("split_buckets");
   pick_splitters(size - 1, oversampling_ratio, global_samples);
   auto buckets = build_buckets(data, global_samples);
+  kamping::measurements::timer().stop_and_append();
+  kamping::measurements::timer().synchronize_and_start("flatten");
   std::vector<int> sCounts, sDispls, rCounts(size), rDispls(size + 1);
   sDispls.push_back(0);
   for (auto &bucket : buckets) {
@@ -75,6 +80,8 @@ void parallelSort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
     sCounts.push_back(bucket.size());
     sDispls.push_back(bucket.size() + sDispls.back());
   }
+  kamping::measurements::timer().stop_and_append();
+  kamping::measurements::timer().synchronize_and_start("alltoallv");
   MPI_Alltoall(sCounts.data(), 1, MPI_INT, rCounts.data(), 1, MPI_INT, comm);
 
   // exclusive prefix sum of recv displacements
@@ -86,7 +93,10 @@ void parallelSort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
   MPI_Alltoallv(data.data(), sCounts.data(), sDispls.data(),
                 kamping::mpi_datatype<T>(), rData.data(), rCounts.data(),
                 rDispls.data(), kamping::mpi_datatype<T>(), comm);
+  kamping::measurements::timer().stop_and_append();
+  kamping::measurements::timer().synchronize_and_start("local_sort");
   std::sort(rData.begin(), rData.end());
+  kamping::measurements::timer().stop_and_append();
   rData.swap(data);
 }
 template <typename T>
@@ -128,22 +138,34 @@ template <typename T>
 void parallelSortKaMPIng(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
   using namespace kamping;
   Communicator<> comm(comm_);
+  kamping::measurements::timer().synchronize_and_start("sampling");
   const size_t oversampling_ratio = 16 * std::log2(comm.size()) + 1;
   std::vector<T> local_samples(oversampling_ratio);
   std::sample(data.begin(), data.end(), local_samples.begin(),
               oversampling_ratio, std::mt19937{seed});
+  kamping::measurements::timer().stop_and_append();
+  kamping::measurements::timer().synchronize_and_start("gather_samples");
   auto global_samples =
       comm.allgather(send_buf(local_samples)).extract_recv_buffer();
+  kamping::measurements::timer().stop_and_append();
+  kamping::measurements::timer().synchronize_and_start("split_buckets");
   pick_splitters(comm.size() - 1, oversampling_ratio, global_samples);
   auto buckets = build_buckets(data, global_samples);
+  kamping::measurements::timer().stop_and_append();
+  kamping::measurements::timer().synchronize_and_start("flatten");
   std::vector<int> scounts;
   for (auto &bucket : buckets) {
     data.insert(data.end(), bucket.begin(), bucket.end());
     scounts.push_back(bucket.size());
   }
+  kamping::measurements::timer().stop_and_append();
+  kamping::measurements::timer().synchronize_and_start("alltoallv");
   data = comm.alltoallv(send_buf(std::move(data)), send_counts(scounts))
              .extract_recv_buffer();
+  kamping::measurements::timer().stop_and_append();
+  kamping::measurements::timer().synchronize_and_start("local_sort");
   std::sort(data.begin(), data.end());
+  kamping::measurements::timer().stop_and_append();
 }
 
 template <typename T>
