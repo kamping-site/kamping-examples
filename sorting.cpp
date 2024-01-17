@@ -284,7 +284,7 @@ void parallelSortRWTHMPI(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
 
 template <typename T>
 auto generate_data(size_t n_local, size_t seed) -> std::vector<T> {
-  std::mt19937 eng(seed);
+  std::mt19937 eng(seed + kamping::world_rank());
   std::uniform_int_distribution<T> dist(0, std::numeric_limits<T>::max());
   std::vector<T> data(n_local);
   auto gen = [&] { return dist(eng); };
@@ -346,24 +346,25 @@ int main(int argc, char *argv[]) {
   using element_type = uint64_t;
 
   auto original_data = generate_data<element_type>(n_local, seed);
+    size_t local_seed = seed + kamping::world_rank() + kamping::world_size();
   bool correct = false;
   auto do_run = [&](auto &&algo) {
     if (check) {
       kamping::measurements::timer().synchronize_and_start("warmup_time");
       auto data = original_data;
-      algo(MPI_COMM_WORLD, data, seed);
+      algo(MPI_COMM_WORLD, data, local_seed);
       kamping::measurements::timer().stop_and_append();
       correct = globally_sorted(MPI_COMM_WORLD, data, original_data);
     } else if (warmup) {
       kamping::measurements::timer().synchronize_and_start("warmup_time");
       auto data = original_data;
-      algo(MPI_COMM_WORLD, data, seed);
+      algo(MPI_COMM_WORLD, data, local_seed);
       kamping::measurements::timer().stop_and_append();
     }
     for (size_t iteration = 0; iteration < iterations; iteration++) {
       auto data = original_data;
       kamping::measurements::timer().synchronize_and_start("total_time");
-      algo(MPI_COMM_WORLD, data, seed);
+      algo(MPI_COMM_WORLD, data, local_seed);
       kamping::measurements::timer().stop_and_append();
     }
   };
