@@ -1,6 +1,6 @@
-name: sorting_new
+name: sorting_no_check
 executable: sorting
-ncores: [1, 8, 64, 256, 1024, 2048, 4096, 8192]
+ncores: [3072, 6144, 12288]
 time_limit: 5
 threads_per_rank: [1]
 graphs:
@@ -8,6 +8,6 @@ graphs:
     name: random_array
     n_local: 1000000
 config:
-  - algorithm: [kamping, mpl, mpi, mpi_new]
+  - algorithm: [kamping, mpl, mpi]
     iterations: [5]
-    check: [True]
+    check: [False]

@@ -1,7 +1,7 @@
 name: sorting
 executable: sorting
-ncores: [1, 2, 4]
-time_limit: 2
+ncores: [1, 48, 96, 384, 768, 1536, 3072, 6144, 12288]
+time_limit: 5
 threads_per_rank: [1]
 graphs:
   - generator: dummy
@@ -10,3 +10,4 @@ graphs:
 config:
   - algorithm: [kamping, mpl, mpi]
     iterations: [5]
+    check: [True]
