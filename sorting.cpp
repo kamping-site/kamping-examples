@@ -297,8 +297,10 @@ int main(int argc, char *argv[]) {
   app.add_option("--seed", seed);
   size_t iterations = 1;
   app.add_option("--iterations", iterations);
-  bool check;
+  bool check = false;
   app.add_flag("--check", check);
+  bool warmup = false;
+  app.add_flag("--warmup", warmup);
   std::string json_output_path = "stdout";
   app.add_option("--json_output_path", json_output_path);
   CLI11_PARSE(app, argc, argv);
@@ -309,9 +311,16 @@ int main(int argc, char *argv[]) {
   bool correct = false;
   auto do_run = [&](auto &&algo) {
     if (check) {
+      kamping::measurements::timer().synchronize_and_start("warmup_time");
       auto data = original_data;
       algo(MPI_COMM_WORLD, data, seed);
+      kamping::measurements::timer().stop_and_append();
       correct = globally_sorted(MPI_COMM_WORLD, data, original_data);
+    } else if (warmup) {
+      kamping::measurements::timer().synchronize_and_start("warmup_time");
+      auto data = original_data;
+      algo(MPI_COMM_WORLD, data, seed);
+      kamping::measurements::timer().stop_and_append();
     }
     for (size_t iteration = 0; iteration < iterations; iteration++) {
       auto data = original_data;
