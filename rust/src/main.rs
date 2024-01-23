@@ -32,9 +32,47 @@ fn exclusive_prefix_sum<T: Add<Output = T> + Copy>(init: T, vec: &[T]) -> Vec<T>
     out
 }
 
+fn gather_on_root<T>(comm: &SimpleCommunicator, v: &Vec<T>) -> Option<Vec<T>>
+where
+    T: Default + Clone + Equivalence,
+{
+    let root = comm.process_at_rank(0);
+    if comm.rank() == 0 {
+        let mut rcounts = vec![0 as Count; comm.size() as usize];
+        root.gather_into_root(&(v.len() as Count), &mut rcounts);
+        let rdispls: Vec<Count> = rcounts
+            .iter()
+            .scan(0, |acc, &x| {
+                let tmp = *acc;
+                *acc += x;
+                Some(tmp)
+            })
+            .collect();
+        let mut buf = vec![T::default(); rcounts.iter().sum::<Count>() as usize];
+        let mut partition = PartitionMut::new(&mut buf, rcounts, rdispls);
+        root.gather_varcount_into_root(v, &mut partition);
+        Some(buf)
+    } else {
+        root.gather_into(&(v.len() as Count));
+        root.gather_varcount_into(v);
+        None
+    }
+}
+
+fn globally_sorted<T>(comm: &SimpleCommunicator, data: &Vec<T>, original_data: &Vec<T>) -> bool
+where
+    T: Equivalence + Default + Clone + PartialEq + Ord,
+{
+    let global_data = gather_on_root(comm, data).iter_mut().for_each(|x| x.sort());
+    let global_original_data = gather_on_root(comm, original_data)
+        .iter_mut()
+        .for_each(|x| x.sort());
+    return global_data == global_original_data;
+}
+
 fn sort<T>(comm: &SimpleCommunicator, data: &mut Vec<T>, seed: u64)
 where
-    T: Equivalence + Eq + Ord + Default + Copy
+    T: Equivalence + Eq + Ord + Default + Copy,
 {
     let oversampling_ratio = 16 * comm.size().ilog2() + 1;
     let mut gen = Pcg64Mcg::seed_from_u64(seed);
@@ -47,7 +85,7 @@ where
     let mut global_samples = vec![T::default(); local_samples.len() * (comm.size() as usize)];
     comm.all_gather_into(&local_samples, &mut global_samples);
     global_samples.sort();
-    let global_samples  = (0..comm.size() as usize - 1)
+    let global_samples = (0..comm.size() as usize - 1)
         .map(|i| global_samples[(i + 1) * oversampling_ratio as usize])
         .collect::<Vec<T>>();
     let mut buckets = vec![Vec::<T>::new(); comm.size() as usize];
@@ -56,14 +94,20 @@ where
         buckets[bucket_idx].push(*elem);
     }
     data.clear();
-    let scounts = buckets.iter().map(|x| x.len() as Count).collect::<Vec<Count>>();
+    let scounts = buckets
+        .iter()
+        .map(|x| x.len() as Count)
+        .collect::<Vec<Count>>();
     let mut rcounts = vec![0 as Count; comm.size() as usize];
     comm.all_to_all_into(&scounts, &mut rcounts);
     let sdispls = exclusive_prefix_sum(0, &scounts);
     let rdispls = exclusive_prefix_sum(0, &rcounts);
-    let sbuf =  buckets.into_iter().flatten().collect::<Vec<T>>();
+    let sbuf = buckets.into_iter().flatten().collect::<Vec<T>>();
     let sbuf = Partition::new(&sbuf, scounts, sdispls);
-    data.resize((rcounts.last().unwrap() + rdispls.last().unwrap()) as usize, T::default());
+    data.resize(
+        (rcounts.last().unwrap() + rdispls.last().unwrap()) as usize,
+        T::default(),
+    );
     let mut rbuf = PartitionMut::new(data, rcounts, rdispls);
     comm.all_to_all_varcount_into(&sbuf, &mut rbuf);
     data.sort();
@@ -81,15 +125,12 @@ fn main() {
     let universe = mpi::initialize().unwrap();
     let args = Args::parse();
     let comm = universe.world();
-    let mut data = generate_data::<u64>(args.n_local, args.seed);
+    let mut data = generate_data::<u64>(args.n_local, args.seed + comm.rank() as u64);
+    let original_data = data.clone();
     let local_seed = args.seed + comm.rank() as u64 + comm.size() as u64;
     sort(&comm, &mut data, local_seed);
-    // let mut data = Vec::new();
-    // for i in 0..comm.size() {
-    //     for _ in 0..i {
-    //         data.push(i);
-    //     }
-    // }
-    // let scounts: Vec<i32> = (0..comm.size()).collect();
-    // bsp_exchange(&comm, &data, &scounts);
+    let result = globally_sorted(&comm, &data, &original_data);
+    if comm.rank() == 0 {
+        println!("correct: {}", result);
+    }
 }
