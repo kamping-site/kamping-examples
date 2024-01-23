@@ -346,7 +346,7 @@ int main(int argc, char *argv[]) {
   using element_type = uint64_t;
 
   auto original_data = generate_data<element_type>(n_local, seed);
-    size_t local_seed = seed + kamping::world_rank() + kamping::world_size();
+  size_t local_seed = seed + kamping::world_rank() + kamping::world_size();
   bool correct = false;
   auto do_run = [&](auto &&algo) {
     if (check) {
