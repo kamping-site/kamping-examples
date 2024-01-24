@@ -22,7 +22,10 @@ where
     data
 }
 
-fn exclusive_prefix_sum<T: Add<Output = T> + Copy>(init: T, vec: &[T]) -> Vec<T> {
+fn exclusive_prefix_sum<T: Add<Output = T> + Copy>(
+    init: T,
+    vec: &[T],
+) -> Vec<T> {
     let mut sum = init;
     let mut out = Vec::with_capacity(vec.len());
     for i in 0..vec.len() {
@@ -48,7 +51,8 @@ where
                 Some(tmp)
             })
             .collect();
-        let mut buf = vec![T::default(); rcounts.iter().sum::<Count>() as usize];
+        let mut buf =
+            vec![T::default(); rcounts.iter().sum::<Count>() as usize];
         let mut partition = PartitionMut::new(&mut buf, rcounts, rdispls);
         root.gather_varcount_into_root(v, &mut partition);
         Some(buf)
@@ -59,22 +63,51 @@ where
     }
 }
 
-fn globally_sorted<T>(comm: &SimpleCommunicator, data: &Vec<T>, original_data: &Vec<T>) -> bool
+fn globally_sorted<T>(
+    comm: &SimpleCommunicator,
+    data: &Vec<T>,
+    original_data: &Vec<T>,
+) -> bool
 where
     T: Equivalence + Default + Clone + PartialEq + Ord,
 {
-    let global_data = gather_on_root(comm, data).iter_mut().for_each(|x| x.sort());
+    let global_data =
+        gather_on_root(comm, data).iter_mut().for_each(|x| x.sort());
     let global_original_data = gather_on_root(comm, original_data)
         .iter_mut()
         .for_each(|x| x.sort());
-    return global_data == global_original_data;
+    global_data == global_original_data
+}
+
+fn pick_splitters<T: Ord + Clone>(
+    num_splitters: usize,
+    oversampling_ratio: usize,
+    mut global_samples: Vec<T>,
+) -> Vec<T> {
+    global_samples.sort();
+    (0..num_splitters)
+        .map(|i| global_samples[(i + 1) * oversampling_ratio].clone())
+        .collect::<Vec<T>>()
+}
+
+fn build_buckets<T>(data: &mut Vec<T>, splitters: &Vec<T>) -> Vec<Vec<T>>
+where
+    T: Ord + Clone,
+{
+    let mut buckets = vec![Vec::<T>::new(); splitters.len() + 1];
+    for elem in data.iter() {
+        let bucket_idx = splitters.binary_search(&elem).unwrap_or_else(|x| x);
+        buckets[bucket_idx].push(elem.clone());
+    }
+    data.clear();
+    buckets
 }
 
 fn sort<T>(comm: &SimpleCommunicator, data: &mut Vec<T>, seed: u64)
 where
     T: Equivalence + Eq + Ord + Default + Copy,
 {
-    let oversampling_ratio = 16 * comm.size().ilog2() + 1;
+    let oversampling_ratio = 16 * comm.size().ilog2() as usize + 1;
     let mut gen = Pcg64Mcg::seed_from_u64(seed);
     let local_samples = (0..oversampling_ratio)
         .map(|_| {
@@ -82,18 +115,15 @@ where
             data[idx]
         })
         .collect::<Vec<T>>();
-    let mut global_samples = vec![T::default(); local_samples.len() * (comm.size() as usize)];
+    let mut global_samples =
+        vec![T::default(); local_samples.len() * (comm.size() as usize)];
     comm.all_gather_into(&local_samples, &mut global_samples);
-    global_samples.sort();
-    let global_samples = (0..comm.size() as usize - 1)
-        .map(|i| global_samples[(i + 1) * oversampling_ratio as usize])
-        .collect::<Vec<T>>();
-    let mut buckets = vec![Vec::<T>::new(); comm.size() as usize];
-    for elem in data.iter() {
-        let bucket_idx = global_samples.binary_search(&elem).unwrap_or_else(|x| x);
-        buckets[bucket_idx].push(*elem);
-    }
-    data.clear();
+    global_samples = pick_splitters(
+        comm.size() as usize - 1,
+        oversampling_ratio,
+        global_samples,
+    );
+    let buckets = build_buckets(data, &global_samples);
     let scounts = buckets
         .iter()
         .map(|x| x.len() as Count)
@@ -125,7 +155,8 @@ fn main() {
     let universe = mpi::initialize().unwrap();
     let args = Args::parse();
     let comm = universe.world();
-    let mut data = generate_data::<u64>(args.n_local, args.seed + comm.rank() as u64);
+    let mut data =
+        generate_data::<u64>(args.n_local, args.seed + comm.rank() as u64);
     let original_data = data.clone();
     let local_seed = args.seed + comm.rank() as u64 + comm.size() as u64;
     sort(&comm, &mut data, local_seed);
