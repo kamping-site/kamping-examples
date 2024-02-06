@@ -34,6 +34,8 @@ auto main(int argc, char *argv[]) -> int {
           {"create_struct", Type::create_struct},
           {"pair_as_bytes", Type::pair_as_bytes},
           {"contiguous_type", Type::contiguous_type}}));
+  std::string json_output_path = "stdout";
+  app.add_option("--json_output_path", json_output_path);
   CLI11_PARSE(app, argc, argv);
 
   int rank, size;
@@ -97,14 +99,15 @@ auto main(int argc, char *argv[]) -> int {
                MPI_MAX, 0, MPI_COMM_WORLD);
   }
   if (rank == 0) {
+    std::ofstream out(json_output_path);
     double average_time =
         std::accumulate(times.begin(), times.end(), 0.0) / n_reps;
     auto [min_time, max_time] = std::minmax_element(times.begin(), times.end());
-    std::cout << "RESULT ";
-    std::cout << "n_reps=" << n_reps << " data_size=" << data_size
-              << " mpi_type_constructor=" << to_string(mpi_type_constructor) << " ";
-    std::cout << "average_time=" << average_time << " min_time=" << *min_time
-              << " max_time=" << *max_time << "\n";
+    out << "RESULT ";
+    out << "n_reps=" << n_reps << " data_size=" << data_size
+        << " mpi_type_constructor=" << to_string(mpi_type_constructor) << " ";
+    out << "average_time=" << average_time << " min_time=" << *min_time
+        << " max_time=" << *max_time << "\n";
   }
   MPI_Type_free(&type);
   MPI_Finalize();
