@@ -41,6 +41,7 @@ target_link_libraries(sorting PUBLIC MPI::MPI_CXX kamping::kamping mpl::mpl Boos
 target_link_libraries(sorting PUBLIC CLI11::CLI11)
 target_compile_features(sorting PUBLIC cxx_std_20)
 
-#add_executable(gatherv gatherv.cpp)
-#target_link_libraries(gatherv PUBLIC MPI::MPI_CXX kamping::kamping mpl::mpl Boost::mpi rwth::mpi)
-#target_compile_features(gatherv PUBLIC cxx_std_20)
+add_executable(type_ping_pong type_ping_pong.cpp)
+target_link_libraries(type_ping_pong PUBLIC MPI::MPI_CXX kamping::kamping)
+target_link_libraries(type_ping_pong PUBLIC CLI11::CLI11)
+target_compile_features(type_ping_pong PUBLIC cxx_std_20)
