@@ -4,7 +4,7 @@
 #include <utility>
 #include <vector>
 
-enum class Type { create_struct, pair_as_bytes, contiguous_type };
+enum class Type { create_struct, pair_as_bytes, contiguous_type, builtin };
 
 std::string to_string(Type t) {
   switch (t) {
@@ -14,6 +14,8 @@ std::string to_string(Type t) {
     return "pair_as_bytes";
   case Type::contiguous_type:
     return "contiguous_type";
+  case Type::builtin:
+    return "builtin";
   }
   return "unknown";
 }
@@ -33,7 +35,8 @@ auto main(int argc, char *argv[]) -> int {
       ->transform(CLI::CheckedTransformer(std::unordered_map<std::string, Type>{
           {"create_struct", Type::create_struct},
           {"pair_as_bytes", Type::pair_as_bytes},
-          {"contiguous_type", Type::contiguous_type}}));
+          {"contiguous_type", Type::contiguous_type},
+          {"builtin", Type::builtin}}));
   std::string json_output_path = "stdout";
   app.add_option("--json_output_path", json_output_path);
   CLI11_PARSE(app, argc, argv);
@@ -41,7 +44,7 @@ auto main(int argc, char *argv[]) -> int {
   int rank, size;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
-  using value_type = std::pair<int, int>;
+  using value_type = int;
   std::vector<value_type> data(data_size);
   MPI_Datatype type;
   int num_elements;
@@ -57,8 +60,11 @@ auto main(int argc, char *argv[]) -> int {
     // disp[1] = MPI_Aint_diff(disp[1], base);
     // MPI_Datatype types[2] = {MPI_INT, MPI_INT};
     // int blocklens[2] = {1, 1};
-    // MPI_Type_create_struct(2, blocklens, disp, types, &type);
-    MPI_Type_contiguous(2, MPI_INT, &type);
+    int blocklens = 1;
+    MPI_Aint disp = 0;
+    MPI_Datatype types = MPI_INT;
+    MPI_Type_create_struct(1, &blocklens, &disp, &types, &type);
+    // MPI_Type_contiguous(2, MPI_INT, &type);
     MPI_Type_commit(&type);
     num_elements = static_cast<int>(data.size());
     break;
@@ -70,11 +76,14 @@ auto main(int argc, char *argv[]) -> int {
     break;
   }
   case Type::contiguous_type:
-    MPI_Type_contiguous(static_cast<int>(data_size) *
-                            sizeof(value_type),
+    MPI_Type_contiguous(static_cast<int>(data_size) * sizeof(value_type),
                         MPI_BYTE, &type);
     MPI_Type_commit(&type);
     num_elements = 1;
+    break;
+  case Type::builtin:
+    type = MPI_INT;
+    num_elements = static_cast<int>(data.size());
     break;
   }
   std::vector<double> times(n_reps);
@@ -101,7 +110,8 @@ auto main(int argc, char *argv[]) -> int {
                MPI_MAX, 0, MPI_COMM_WORLD);
   }
   if (rank == 0) {
-    std::ofstream out(json_output_path);
+    auto& out = std::cout;
+    // std::ofstream out(json_output_path);
     double average_time =
         std::accumulate(times.begin(), times.end(), 0.0) / n_reps;
     auto [min_time, max_time] = std::minmax_element(times.begin(), times.end());
