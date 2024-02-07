@@ -41,35 +41,37 @@ auto main(int argc, char *argv[]) -> int {
   int rank, size;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
-  std::vector<std::pair<int, double>> data(data_size);
+  using value_type = std::pair<int, int>;
+  std::vector<value_type> data(data_size);
   MPI_Datatype type;
   int num_elements;
   switch (mpi_type_constructor) {
   case Type::create_struct: {
-    std::pair<int, double> t{};
-    MPI_Aint base;
-    MPI_Get_address(&t, &base);
-    MPI_Aint disp[2];
-    MPI_Get_address(&t.first, &disp[0]);
-    MPI_Get_address(&t.second, &disp[1]);
-    disp[0] = MPI_Aint_diff(disp[0], base);
-    disp[1] = MPI_Aint_diff(disp[1], base);
-    MPI_Datatype types[2] = {MPI_INT, MPI_DOUBLE};
-    int blocklens[2] = {1, 1};
-    MPI_Type_create_struct(2, blocklens, disp, types, &type);
+    // value_type t{};
+    // MPI_Aint base;
+    // MPI_Get_address(&t, &base);
+    // MPI_Aint disp[2];
+    // MPI_Get_address(&t.first, &disp[0]);
+    // MPI_Get_address(&t.second, &disp[1]);
+    // disp[0] = MPI_Aint_diff(disp[0], base);
+    // disp[1] = MPI_Aint_diff(disp[1], base);
+    // MPI_Datatype types[2] = {MPI_INT, MPI_INT};
+    // int blocklens[2] = {1, 1};
+    // MPI_Type_create_struct(2, blocklens, disp, types, &type);
+    MPI_Type_contiguous(2, MPI_INT, &type);
     MPI_Type_commit(&type);
     num_elements = static_cast<int>(data.size());
     break;
   }
   case Type::pair_as_bytes: {
-    MPI_Type_contiguous(sizeof(std::pair<int, double>), MPI_BYTE, &type);
+    MPI_Type_contiguous(sizeof(value_type), MPI_BYTE, &type);
     MPI_Type_commit(&type);
     num_elements = static_cast<int>(data.size());
     break;
   }
   case Type::contiguous_type:
     MPI_Type_contiguous(static_cast<int>(data_size) *
-                            sizeof(std::pair<int, double>),
+                            sizeof(value_type),
                         MPI_BYTE, &type);
     MPI_Type_commit(&type);
     num_elements = 1;
