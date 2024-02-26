@@ -1,7 +1,8 @@
 #pragma once
+#include <random>
+
 #include "./common.hpp"
 #include "kamping/mpi_datatype.hpp"
-#include <random>
 namespace mpi {
 namespace helper = kamping;
 template <typename T>
@@ -34,11 +35,11 @@ void sort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
   for (int i = 1; i <= size; i++) {
     rDispls[i] = rCounts[i - 1] + rDispls[i - 1];
   }
-  std::vector<T> rData(rDispls.back()); // data exchange
+  std::vector<T> rData(rDispls.back());  // data exchange
   MPI_Alltoallv(data.data(), sCounts.data(), sDispls.data(),
                 helper::mpi_datatype<T>(), rData.data(), rCounts.data(),
                 rDispls.data(), helper::mpi_datatype<T>(), comm);
   std::sort(rData.begin(), rData.end());
   rData.swap(data);
 }
-} // namespace mpi
+}  // namespace mpi

@@ -1,7 +1,8 @@
 #pragma once
-#include "./common.hpp"
 #include <boost/mpi.hpp>
 #include <random>
+
+#include "./common.hpp"
 namespace boost {
 template <typename T>
 void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
@@ -32,7 +33,7 @@ void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
   for (int i = 1; i <= comm.size(); i++) {
     rDispls[i] = rCounts[i - 1] + rDispls[i - 1];
   }
-  std::vector<T> rData(rDispls.back()); // data exchange
+  std::vector<T> rData(rDispls.back());  // data exchange
   // Boost.MPI does not support alltoallv
   MPI_Alltoallv(data.data(), sCounts.data(), sDispls.data(),
                 boost::mpi::get_mpi_datatype<T>(), rData.data(), rCounts.data(),
@@ -40,4 +41,4 @@ void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
   std::sort(rData.begin(), rData.end());
   rData.swap(data);
 }
-} // namespace boost
+}  // namespace boost

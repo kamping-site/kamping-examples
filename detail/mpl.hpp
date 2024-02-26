@@ -1,7 +1,8 @@
 #pragma once
-#include "./common.hpp"
 #include <mpl/mpl.hpp>
 #include <random>
+
+#include "./common.hpp"
 namespace mpl {
 template <typename T>
 void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
@@ -35,9 +36,9 @@ void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
         mpl::indexed_layout<T>({{recv_counts[i], recv_pos}}));
     recv_pos += recv_counts[i];
   }
-  std::vector<T> recv_data(recv_pos); // data exchange
+  std::vector<T> recv_data(recv_pos);  // data exchange
   comm.alltoallv(data.data(), send_layouts, recv_data.data(), recv_layouts);
   std::sort(recv_data.begin(), recv_data.end());
   recv_data.swap(data);
 }
-} // namespace mpl
+}  // namespace mpl

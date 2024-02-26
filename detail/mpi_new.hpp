@@ -1,7 +1,8 @@
 #pragma once
+#include <random>
+
 #include "./common.hpp"
 #include "kamping/mpi_datatype.hpp"
-#include <random>
 namespace mpi_new {
 namespace helper = kamping;
 template <typename T>
@@ -40,4 +41,4 @@ void sort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
   rData.swap(data);
 }
 
-} // namespace mpi_new
+}  // namespace mpi_new

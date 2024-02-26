@@ -1,9 +1,10 @@
 #pragma once
-#include "./common.hpp"
 #include <kamping/collectives/allgather.hpp>
 #include <kamping/collectives/alltoall.hpp>
 #include <kamping/communicator.hpp>
 #include <random>
+
+#include "./common.hpp"
 namespace kamping {
 namespace __mping = kamping;
 template <typename T>
@@ -14,8 +15,7 @@ void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
   std::vector<T> local_samples(oversampling_ratio);
   std::sample(data.begin(), data.end(), local_samples.begin(),
               oversampling_ratio, std::mt19937{seed});
-  auto global_samples =
-      comm.allgather(send_buf(local_samples)).extract_recv_buffer();
+  auto global_samples = comm.allgather(send_buf(local_samples));
   pick_splitters(comm.size() - 1, oversampling_ratio, global_samples);
   auto buckets = build_buckets(data, global_samples);
   std::vector<int> scounts;
@@ -23,8 +23,8 @@ void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
     data.insert(data.end(), bucket.begin(), bucket.end());
     scounts.push_back(bucket.size());
   }
-  data = comm.alltoallv(send_buf(data), send_counts(scounts))
-             .extract_recv_buffer();
+  data = comm.alltoallv(send_buf(data), send_counts(scounts));
+
   std::sort(data.begin(), data.end());
 }
 template <typename T>
@@ -58,4 +58,4 @@ void sort_verbose(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
   std::sort(rData.begin(), rData.end());
   rData.swap(data);
 }
-} // namespace kamping
+}  // namespace kamping

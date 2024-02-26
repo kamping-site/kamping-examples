@@ -1,10 +1,8 @@
+#if defined(KAMPING_EXAMPLES_USE_BOOST)
 #include "detail/boost.hpp"
-#include "detail/common.hpp"
-#include "detail/kamping.hpp"
-#include "detail/mpi.hpp"
-#include "detail/mpi_new.hpp"
-#include "detail/mpl.hpp"
-#include "detail/rwth.hpp"
+#endif
+#include <mpi.h>
+
 #include <CLI/CLI.hpp>
 #include <algorithm>
 #include <iostream>
@@ -12,20 +10,25 @@
 #include <kamping/communicator.hpp>
 #include <kamping/measurements/printer.hpp>
 #include <kamping/measurements/timer.hpp>
-#include <mpi.h>
-#include <mpl/mpl.hpp> // needed for initialization
+#include <mpl/mpl.hpp>  // needed for initialization
 #include <random>
 #include <vector>
+
+#include "detail/common.hpp"
+#include "detail/kamping.hpp"
+#include "detail/mpi.hpp"
+#include "detail/mpi_new.hpp"
+#include "detail/mpl.hpp"
+#include "detail/rwth.hpp"
 
 template <typename T>
 bool globally_sorted(MPI_Comm comm, std::vector<T> const &data,
                      std::vector<T> &original_data) {
   kamping::Communicator kamping_comm(comm);
-  auto global_data =
-      kamping_comm.gatherv(kamping::send_buf(data)).extract_recv_buffer();
+  auto global_data = kamping_comm.gatherv(kamping::send_buf(data));
   auto global_data_original =
-      kamping_comm.gatherv(kamping::send_buf(original_data))
-          .extract_recv_buffer();
+      kamping_comm.gatherv(kamping::send_buf(original_data));
+
   std::sort(global_data_original.begin(), global_data_original.end());
   return global_data_original == global_data;
   // std::is_sorted(global_data.begin(), global_data.end());
@@ -72,9 +75,9 @@ void log_results(std::string const &json_output_path,
 }
 
 int main(int argc, char *argv[]) {
-  mpl::environment::comm_world(); // this perform MPI_init, MPL has no other way
-                                  // to do it and calls it implicitly when first
-                                  // accessing a communicator
+  mpl::environment::comm_world();  // this perform MPI_init, MPL has no other
+                                   // way to do it and calls it implicitly when
+                                   // first accessing a communicator
   CLI::App app{"Parallel sorting"};
   std::string algorithm;
   app.add_option("--algorithm", algorithm);
@@ -125,8 +128,10 @@ int main(int argc, char *argv[]) {
     do_run(kamping::sort<element_type>);
   } else if (algorithm == "kamping_verbose") {
     do_run(kamping::sort_verbose<element_type>);
+#if defined(KAMPING_EXAMPLES_USE_BOOST)
   } else if (algorithm == "boost") {
     do_run(boost::sort<element_type>);
+#endif
   } else if (algorithm == "rwth") {
     do_run(rwth::sort<element_type>);
   } else if (algorithm == "mpl") {

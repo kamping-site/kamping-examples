@@ -1,6 +1,7 @@
+#include <mpi.h>
+
 #include <CLI/CLI.hpp>
 #include <cstddef>
-#include <mpi.h>
 #include <utility>
 #include <vector>
 
@@ -8,19 +9,19 @@ enum class Type { create_struct, pair_as_bytes, contiguous_type, builtin };
 
 std::string to_string(Type t) {
   switch (t) {
-  case Type::create_struct:
-    return "create_struct";
-  case Type::pair_as_bytes:
-    return "pair_as_bytes";
-  case Type::contiguous_type:
-    return "contiguous_type";
-  case Type::builtin:
-    return "builtin";
+    case Type::create_struct:
+      return "create_struct";
+    case Type::pair_as_bytes:
+      return "pair_as_bytes";
+    case Type::contiguous_type:
+      return "contiguous_type";
+    case Type::builtin:
+      return "builtin";
   }
   return "unknown";
 }
 
-auto main(int argc, char *argv[]) -> int {
+auto main(int argc, char* argv[]) -> int {
   MPI_Init(&argc, &argv);
   CLI::App app{"MPI datatype ping-pong benchmark"};
   std::size_t n_reps;
@@ -49,42 +50,42 @@ auto main(int argc, char *argv[]) -> int {
   MPI_Datatype type;
   int num_elements;
   switch (mpi_type_constructor) {
-  case Type::create_struct: {
-    // value_type t{};
-    // MPI_Aint base;
-    // MPI_Get_address(&t, &base);
-    // MPI_Aint disp[2];
-    // MPI_Get_address(&t.first, &disp[0]);
-    // MPI_Get_address(&t.second, &disp[1]);
-    // disp[0] = MPI_Aint_diff(disp[0], base);
-    // disp[1] = MPI_Aint_diff(disp[1], base);
-    // MPI_Datatype types[2] = {MPI_INT, MPI_INT};
-    // int blocklens[2] = {1, 1};
-    int blocklens = 1;
-    MPI_Aint disp = 0;
-    MPI_Datatype types = MPI_INT;
-    MPI_Type_create_struct(1, &blocklens, &disp, &types, &type);
-    // MPI_Type_contiguous(2, MPI_INT, &type);
-    MPI_Type_commit(&type);
-    num_elements = static_cast<int>(data.size());
-    break;
-  }
-  case Type::pair_as_bytes: {
-    MPI_Type_contiguous(sizeof(value_type), MPI_BYTE, &type);
-    MPI_Type_commit(&type);
-    num_elements = static_cast<int>(data.size());
-    break;
-  }
-  case Type::contiguous_type:
-    MPI_Type_contiguous(static_cast<int>(data_size) * sizeof(value_type),
-                        MPI_BYTE, &type);
-    MPI_Type_commit(&type);
-    num_elements = 1;
-    break;
-  case Type::builtin:
-    type = MPI_INT;
-    num_elements = static_cast<int>(data.size());
-    break;
+    case Type::create_struct: {
+      // value_type t{};
+      // MPI_Aint base;
+      // MPI_Get_address(&t, &base);
+      // MPI_Aint disp[2];
+      // MPI_Get_address(&t.first, &disp[0]);
+      // MPI_Get_address(&t.second, &disp[1]);
+      // disp[0] = MPI_Aint_diff(disp[0], base);
+      // disp[1] = MPI_Aint_diff(disp[1], base);
+      // MPI_Datatype types[2] = {MPI_INT, MPI_INT};
+      // int blocklens[2] = {1, 1};
+      int blocklens = 1;
+      MPI_Aint disp = 0;
+      MPI_Datatype types = MPI_INT;
+      MPI_Type_create_struct(1, &blocklens, &disp, &types, &type);
+      // MPI_Type_contiguous(2, MPI_INT, &type);
+      MPI_Type_commit(&type);
+      num_elements = static_cast<int>(data.size());
+      break;
+    }
+    case Type::pair_as_bytes: {
+      MPI_Type_contiguous(sizeof(value_type), MPI_BYTE, &type);
+      MPI_Type_commit(&type);
+      num_elements = static_cast<int>(data.size());
+      break;
+    }
+    case Type::contiguous_type:
+      MPI_Type_contiguous(static_cast<int>(data_size) * sizeof(value_type),
+                          MPI_BYTE, &type);
+      MPI_Type_commit(&type);
+      num_elements = 1;
+      break;
+    case Type::builtin:
+      type = MPI_INT;
+      num_elements = static_cast<int>(data.size());
+      break;
   }
   std::vector<double> times(n_reps);
   for (std::size_t i = 0; i < n_reps; i++) {

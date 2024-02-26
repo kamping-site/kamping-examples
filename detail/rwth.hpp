@@ -1,8 +1,10 @@
 #pragma once
-#include "./common.hpp"
 #include <mpi.h>
+
 #include <mpi/all.hpp>
 #include <random>
+
+#include "./common.hpp"
 namespace rwth {
 template <typename T>
 void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
@@ -25,4 +27,4 @@ void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
   std::sort(rData.begin(), rData.end());
   rData.swap(data);
 }
-} // namespace rwth
+}  // namespace rwth
