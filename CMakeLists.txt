@@ -66,6 +66,48 @@ add_library(rwth::mpi ALIAS mpi)
 add_library(all_mpi_wrappers INTERFACE)
 target_link_libraries(all_mpi_wrappers INTERFACE MPI::MPI_CXX rwth::mpi
                                                  kamping::kamping mpl::mpl)
+
+list(
+  APPEND
+  KAMPING_WARNING_FLAGS
+  "-Wall"
+  "-Wextra"
+  "-Wconversion"
+  "-Wnon-virtual-dtor"
+  "-Woverloaded-virtual"
+  "-Wshadow"
+  "-Wsign-conversion"
+  "-Wundef"
+  "-Wunreachable-code"
+  "-Wunused")
+
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  list(
+    APPEND
+    KAMPING_WARNING_FLAGS
+    "-Wcast-align"
+    "-Wnull-dereference"
+    "-Wpedantic"
+    "-Wextra-semi"
+    "-Wno-gnu-zero-variadic-macro-arguments")
+endif()
+
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+  list(
+    APPEND
+    KAMPING_WARNING_FLAGS
+    "-Wcast-align"
+    "-Wnull-dereference"
+    "-Wpedantic"
+    "-Wnoexcept"
+    "-Wsuggest-attribute=const"
+    "-Wsuggest-attribute=noreturn"
+    "-Wsuggest-override")
+endif()
+
+add_library(kamping_warnings INTERFACE)
+target_compile_options(kamping_warnings INTERFACE ${KAMPING_WARNING_FLAGS})
+
 if(KAMPING_EXAMPLES_USE_BOOST)
   target_link_libraries(all_mpi_wrappers INTERFACE Boost::mpi)
 endif()
@@ -75,6 +117,7 @@ find_package(KaGen REQUIRED)
 add_executable(sorting sorting.cpp)
 target_link_libraries(sorting PUBLIC all_mpi_wrappers)
 target_link_libraries(sorting PUBLIC CLI11::CLI11)
+target_link_libraries(sorting PRIVATE kamping_warnings)
 target_compile_features(sorting PUBLIC cxx_std_20)
 if(KAMPING_EXAMPLES_USE_BOOST)
   target_compile_definitions(sorting PUBLIC KAMPING_EXAMPLES_USE_BOOST)
@@ -83,9 +126,11 @@ endif()
 add_executable(type_ping_pong type_ping_pong.cpp)
 target_link_libraries(type_ping_pong PUBLIC MPI::MPI_CXX kamping::kamping)
 target_link_libraries(type_ping_pong PUBLIC CLI11::CLI11)
+target_link_libraries(type_ping_pong PRIVATE kamping_warnings)
 target_compile_features(type_ping_pong PUBLIC cxx_std_20)
 
 add_executable(bfs bfs.cpp)
 target_link_libraries(bfs PUBLIC MPI::MPI_CXX kamping::kamping KaGen::KaGen
                                  CLI11::CLI11 spdlog::spdlog)
 target_compile_features(bfs PUBLIC cxx_std_20)
+target_link_libraries(bfs PRIVATE kamping_warnings)
