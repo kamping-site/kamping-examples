@@ -1,0 +1,14 @@
+name: sorting_correct_seed
+executable: sorting
+ncores: [48, 96, 192, 384, 768, 1536, 3072, 6144, 12288]
+time_limit: 10
+threads_per_rank: [1]
+graphs:
+  - generator: dummy
+    name: random_array
+    n_local: 1000000
+config:
+  - algorithm: [mpi, boost, rwth, kamping, mpl]
+    iterations: [5]
+    check: [False]
+    warmup: [True]

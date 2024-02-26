@@ -1,0 +1,22 @@
+name: type_ping_pong_foo_ompi
+executable: type_ping_pong
+tasks_per_node: 1
+ncores: [2]
+time_limit: 3
+threads_per_rank: [1]
+graphs:
+  - generator: dummy
+    name: pairs
+    data_size: 1000
+  - generator: dummy
+    name: pairs
+    data_size: 32000
+  - generator: dummy
+    name: pairs
+    data_size: 100000
+  - generator: dummy
+    name: pairs
+    data_size: 1000000
+config:
+  - mpi_type_constructor: [pair_as_bytes,contiguous_type,create_struct]
+    n_reps: [100]
