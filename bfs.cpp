@@ -67,6 +67,7 @@ struct Frontier {
     SPDLOG_DEBUG("exchanging frontier: frontiers={}", _data);
     std::vector<VertexId> send_buffer;
     std::vector<int> send_counts(_comm.size());
+    kamping::measurements::timer().start("copy_buffer");
     for (size_t rank = 0; rank < _comm.size(); rank++) {
       auto it = _data.find(static_cast<int>(rank));
       if (it == _data.end()) {
@@ -79,9 +80,12 @@ struct Frontier {
       send_counts[rank] = static_cast<int>(local_data.size());
       std::vector<VertexId>{}.swap(local_data);
     }
+    kamping::measurements::timer().stop_and_add();
     _data.clear();
+    kamping::measurements::timer().start("alltoall");
     auto new_frontier = _comm.alltoallv(kamping::send_buf(send_buffer),
                                         kamping::send_counts(send_counts));
+    kamping::measurements::timer().stop_and_add();
     return new_frontier;
   }
 
@@ -147,13 +151,18 @@ struct Frontier {
       int block_length = static_cast<int>(local_data.size());
       MPI_Aint address;
       MPI_Get_address(local_data.data(), &address);
+      kamping::measurements::timer().start("type_creation");
       MPI_Type_create_hindexed(1, &block_length, &address,
                                kamping::mpi_type_traits<VertexId>::data_type(),
                                &send_types[rank]);
+      kamping::measurements::timer().stop_and_add();
+      kamping::measurements::timer().start("type_commit");
       MPI_Type_commit(&send_types[rank]);
+      kamping::measurements::timer().stop_and_add();
       send_counts[rank] = 1;
       real_send_counts[rank] = static_cast<int>(local_data.size());
     }
+    kamping::measurements::timer().start("alltoall");
     _comm.alltoall(kamping::send_recv_buf(real_send_counts));
     std::vector<int> recv_displs(_comm.size());
     std::exclusive_scan(recv_counts.begin(), recv_counts.end(),
@@ -172,11 +181,14 @@ struct Frontier {
                   send_types.data(), recv_buf.data(), recv_counts.data(),
                   recv_displs.data(), recv_types.data(),
                   _comm.mpi_communicator());
+    kamping::measurements::timer().stop_and_add();
     _data.clear();
     SPDLOG_DEBUG("recv_buf={}", recv_buf);
     for (auto &type : send_types) {
       if (type != MPI_BYTE) {
+        kamping::measurements::timer().start("type_free");
         MPI_Type_free(&type);
+        kamping::measurements::timer().stop_and_add();
       }
     }
     return recv_buf;
