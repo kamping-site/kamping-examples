@@ -388,7 +388,7 @@ def load_suite_from_yaml(path):
                 generator = graph.pop("generator")
                 if (generator == "kagen"):
                     inputs.append(KaGenGraph(**graph))
-                if (generator == "dummy"):
+                elif (generator == "dummy"):
                     inputs.append(DummyInstance(**graph))
                 else:
                     inputs.append(GenInputGraph(generator, **graph))
