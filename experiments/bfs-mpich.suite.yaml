@@ -1,4 +1,4 @@
-name: bfs
+name: bfs-mpich
 executable: bfs
 ncores: [1, 48, 96, 384, 768, 1536, 3072]
 time_limit: 3
