@@ -20,13 +20,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from asyncio import threads
 from genericpath import isfile
 import subprocess
 import logging
 import os, re
 from pathlib import Path
-from xml.sax.handler import property_declaration_handler
 import yaml
 import sys
 import math

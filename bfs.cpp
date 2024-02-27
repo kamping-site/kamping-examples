@@ -85,48 +85,48 @@ struct Frontier {
     return new_frontier;
   }
 
-  std::vector<VertexId> exchange_no_copy() {
-    SPDLOG_DEBUG("exchanging frontier: frontiers={}", _data);
+  // std::vector<VertexId> exchange_no_copy() {
+  //   SPDLOG_DEBUG("exchanging frontier: frontiers={}", _data);
 
-    std::vector<MPI_Count> send_counts(_comm.size());
-    std::vector<MPI_Aint> send_displs(_comm.size());
-    for (size_t rank = 0; rank < _comm.size(); rank++) {
-      auto it = _data.find(static_cast<int>(rank));
-      if (it == _data.end()) {
-        send_counts[rank] = 0;
-        continue;
-      }
-      MPI_Aint addr;
-      MPI_Get_address(it->second.data(), &addr);
-      send_displs[rank] = addr;
-      send_counts[rank] = static_cast<MPI_Count>(it->second.size());
-    }
-    std::vector<MPI_Count> recv_counts =
-        _comm.alltoall(kamping::send_buf(send_counts));
-    std::vector<MPI_Aint> recv_displs(_comm.size());
-    std::exclusive_scan(recv_counts.begin(), recv_counts.end(),
-                        recv_displs.begin(), 0);
-    size_t recv_count =
-        static_cast<size_t>(recv_displs.back() + recv_counts.back());
-    // std::for_each(recv_displs.begin(), recv_displs.end(),
-    //               [](auto &displ) { displ *= sizeof(VertexId); });
-    std::vector<VertexId> new_frontier(recv_count);
-    SPDLOG_DEBUG("send_counts={}, send_displs={}", send_counts, send_displs);
-    SPDLOG_DEBUG("recv_counts={}, recv_displs={}", recv_counts, recv_displs);
-    MPI_Alltoallv_c(
-        MPI_BOTTOM,                                       // sendbuf
-        send_counts.data(),                               // send counts
-        send_displs.data(),                               // send displs
-        kamping::mpi_type_traits<VertexId>::data_type(),  // send type
-        new_frontier.data(),                              // recv buf
-        recv_counts.data(),                               // recv counts
-        recv_displs.data(),                               // recv displs
-        kamping::mpi_type_traits<VertexId>::data_type(),  // recv type
-        _comm.mpi_communicator());
-    SPDLOG_DEBUG("new_frontier={}", new_frontier);
-    _data.clear();
-    return new_frontier;
-  }
+  //   std::vector<MPI_Count> send_counts(_comm.size());
+  //   std::vector<MPI_Aint> send_displs(_comm.size());
+  //   for (size_t rank = 0; rank < _comm.size(); rank++) {
+  //     auto it = _data.find(static_cast<int>(rank));
+  //     if (it == _data.end()) {
+  //       send_counts[rank] = 0;
+  //       continue;
+  //     }
+  //     MPI_Aint addr;
+  //     MPI_Get_address(it->second.data(), &addr);
+  //     send_displs[rank] = addr;
+  //     send_counts[rank] = static_cast<MPI_Count>(it->second.size());
+  //   }
+  //   std::vector<MPI_Count> recv_counts =
+  //       _comm.alltoall(kamping::send_buf(send_counts));
+  //   std::vector<MPI_Aint> recv_displs(_comm.size());
+  //   std::exclusive_scan(recv_counts.begin(), recv_counts.end(),
+  //                       recv_displs.begin(), 0);
+  //   size_t recv_count =
+  //       static_cast<size_t>(recv_displs.back() + recv_counts.back());
+  //   // std::for_each(recv_displs.begin(), recv_displs.end(),
+  //   //               [](auto &displ) { displ *= sizeof(VertexId); });
+  //   std::vector<VertexId> new_frontier(recv_count);
+  //   SPDLOG_DEBUG("send_counts={}, send_displs={}", send_counts, send_displs);
+  //   SPDLOG_DEBUG("recv_counts={}, recv_displs={}", recv_counts, recv_displs);
+  //   MPI_Alltoallv_c(
+  //       MPI_BOTTOM,                                       // sendbuf
+  //       send_counts.data(),                               // send counts
+  //       send_displs.data(),                               // send displs
+  //       kamping::mpi_type_traits<VertexId>::data_type(),  // send type
+  //       new_frontier.data(),                              // recv buf
+  //       recv_counts.data(),                               // recv counts
+  //       recv_displs.data(),                               // recv displs
+  //       kamping::mpi_type_traits<VertexId>::data_type(),  // recv type
+  //       _comm.mpi_communicator());
+  //   SPDLOG_DEBUG("new_frontier={}", new_frontier);
+  //   _data.clear();
+  //   return new_frontier;
+  // }
 
   std::vector<VertexId> exchange_no_copy_datatype() {
     SPDLOG_DEBUG("exchanging frontier: frontiers={}", _data);
