@@ -1,4 +1,5 @@
 #include <spdlog/pattern_formatter.h>
+
 #include <kamping/communicator.hpp>
 #include <kamping/environment.hpp>
 

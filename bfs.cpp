@@ -202,6 +202,8 @@ auto main(int argc, char *argv[]) -> int {
   app.add_flag("--no_copy", no_copy, "Use no copy exchange");
   size_t iterations = 1;
   app.add_option("--iterations", iterations, "Number of iterations");
+  std::string json_output_path = "stdout";
+  app.add_option("--json_output_path", json_output_path, "Path to JSON output");
 
   CLI11_PARSE(app, argc, argv);
   kagen::KaGen kagen(MPI_COMM_WORLD);
@@ -261,8 +263,30 @@ auto main(int argc, char *argv[]) -> int {
     }
     kamping::measurements::timer().stop_and_append();
   }
-  kamping::measurements::FlatPrinter printer;
-  kamping::measurements::timer().aggregate_and_print(printer);
+
+  std::unique_ptr<std::ostream> output_stream;
+  if (json_output_path == "stdout") {
+    output_stream = std::make_unique<std::ostream>(std::cout.rdbuf());
+  } else {
+    std::ofstream file_output(json_output_path);
+    output_stream = std::make_unique<std::ofstream>(std::move(file_output));
+  }
+  if (kamping::comm_world().is_root()) {
+    *output_stream << "{\n";
+  }
+  kamping::measurements::timer().aggregate_and_print(
+      kamping::measurements::SimpleJsonPrinter<>{*output_stream});
+  if (kamping::comm_world().is_root()) {
+    *output_stream << ",\n";
+    *output_stream << "\"info\": {\n";
+    *output_stream << "  \"no_copy\": " << std::boolalpha << no_copy << ",\n";
+    *output_stream << "  \"p\": " << kamping::comm_world().size() << ",\n";
+    *output_stream << "  \"kagen_option_string\": \"" << kagen_option_string
+                   << "\",\n";
+    *output_stream << "  \"seed\": " << seed << "\n";
+    *output_stream << "}\n";
+    *output_stream << "}";
+  }
   // if (comm.is_root()) {
   //   std::cout << "\n";
   // }
