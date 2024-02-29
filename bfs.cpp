@@ -7,6 +7,7 @@
 #include <kamping/collectives/allreduce.hpp>
 #include <kamping/collectives/alltoall.hpp>
 #include <kamping/collectives/reduce.hpp>
+#include <kamping/collectives/sparse_alltoall.hpp>
 #include <kamping/communicator.hpp>
 #include <kamping/environment.hpp>
 #include <kamping/measurements/printer.hpp>
@@ -86,6 +87,26 @@ struct Frontier {
     auto new_frontier = _comm.alltoallv(kamping::send_buf(send_buffer),
                                         kamping::send_counts(send_counts));
     kamping::measurements::timer().stop_and_add();
+    return new_frontier;
+  }
+
+  std::vector<VertexId> exchange_sparse() {
+    SPDLOG_DEBUG("exchanging frontier: frontiers={}", _data);
+    kamping::measurements::timer().start("alltoall");
+    std::vector<VertexId> new_frontier;
+    _comm.alltoallv_sparse(
+        kamping::sparse_send_buf(_data),
+        kamping::on_message([&](auto &probed_message) {
+          auto old_size = static_cast<std::vector<VertexId>::difference_type>(
+              new_frontier.size());
+          new_frontier.resize(new_frontier.size() +
+                              probed_message.recv_count());
+          kamping::Span<VertexId> message{new_frontier.begin() + old_size,
+                                          new_frontier.end()};
+          probed_message.recv(kamping::recv_buf(message));
+        }));
+    kamping::measurements::timer().stop_and_add();
+    _data.clear();
     return new_frontier;
   }
 
@@ -195,6 +216,8 @@ struct Frontier {
   }
 };
 
+enum class ExchangeType { NoCopy, Sparse, Regular };
+
 auto main(int argc, char *argv[]) -> int {
   auto formatter = std::make_unique<spdlog::pattern_formatter>();
   formatter->add_flag<rank_formatter>('r');
@@ -210,8 +233,13 @@ auto main(int argc, char *argv[]) -> int {
       ->required();
   size_t seed = 42;
   app.add_option("--seed", seed);
-  bool no_copy = false;
-  app.add_flag("--no_copy", no_copy, "Use no copy exchange");
+  ExchangeType exchange_type = ExchangeType::Regular;
+  app.add_option("--exchange_type", exchange_type, "Exchange type")
+      ->transform(
+          CLI::CheckedTransformer(std::unordered_map<std::string, ExchangeType>{
+              {"no_copy", ExchangeType::NoCopy},
+              {"sparse", ExchangeType::Sparse},
+              {"regular", ExchangeType::Regular}}));
   size_t iterations = 1;
   app.add_option("--iterations", iterations, "Number of iterations");
   std::string json_output_path = "stdout";
@@ -265,10 +293,16 @@ auto main(int argc, char *argv[]) -> int {
           frontier.add_vertex(u, rank);
         }
       }
-      if (no_copy) {
-        current_frontier = frontier.exchange_no_copy_datatype();
-      } else {
-        current_frontier = frontier.exchange();
+      switch (exchange_type) {
+        case ExchangeType::NoCopy:
+          current_frontier = frontier.exchange_no_copy_datatype();
+          break;
+        case ExchangeType::Sparse:
+          current_frontier = frontier.exchange_sparse();
+          break;
+        case ExchangeType::Regular:
+          current_frontier = frontier.exchange();
+          break;
       }
       level++;
       SPDLOG_DEBUG("level={}", level);
@@ -291,7 +325,19 @@ auto main(int argc, char *argv[]) -> int {
   if (kamping::comm_world().is_root()) {
     *output_stream << ",\n";
     *output_stream << "\"info\": {\n";
-    *output_stream << "  \"no_copy\": " << std::boolalpha << no_copy << ",\n";
+    *output_stream << "  \"exchange_type\": ";
+    switch (exchange_type) {
+      case ExchangeType::NoCopy:
+        *output_stream << "\"no_copy\"";
+        break;
+      case ExchangeType::Sparse:
+        *output_stream << "\"sparse\"";
+        break;
+      case ExchangeType::Regular:
+        *output_stream << "\"regular\"";
+        break;
+    }
+    *output_stream << ",\n";
     *output_stream << "  \"p\": " << kamping::comm_world().size() << ",\n";
     *output_stream << "  \"kagen_option_string\": \"" << kagen_option_string
                    << "\",\n";
