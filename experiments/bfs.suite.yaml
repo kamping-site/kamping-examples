@@ -1,7 +1,7 @@
 name: bfs
 executable: bfs
 ncores: [1, 48, 96, 384, 768, 1536, 3072]
-time_limit: 3
+time_limit: 10
 threads_per_rank: [1]
 graphs:
   - generator: kagen
@@ -17,6 +17,17 @@ graphs:
     N: 15
     M: 18
     scale_weak: TRUE
+  - generator: kagen
+    type: gnm-undirected
+    N: 15
+    M: 18
+    scale_weak: TRUE
+  - generator: kagen
+    type: rhg
+    N: 15
+    M: 18
+    gamma: 2.6
+    scale_weak: TRUE
 config:
-  - no_copy: [False, True]
+  - exchange_type: [regular, sparse, no_copy]
     iterations: [5]
