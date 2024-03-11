@@ -38,7 +38,7 @@ std::string to_string(Type t) {
 void log_result(std::vector<double>& times, std::size_t n_reps,
                 std::size_t data_size, Type mpi_type_constructor,
                 std::string const& value_type,
-                const std::string& json_output_path) {
+                std::ostream& out) {
   if (kamping::comm_world().is_root()) {
     MPI_Reduce(MPI_IN_PLACE, times.data(), static_cast<int>(n_reps), MPI_DOUBLE,
                MPI_MAX, 0, MPI_COMM_WORLD);
@@ -47,21 +47,14 @@ void log_result(std::vector<double>& times, std::size_t n_reps,
                MPI_MAX, 0, MPI_COMM_WORLD);
   }
   if (kamping::comm_world().is_root()) {
-    std::unique_ptr<std::ostream> out;
-    if (json_output_path == "stdout") {
-      out = std::make_unique<std::ostream>(std::cout.rdbuf());
-    } else {
-      std::ofstream file_output(json_output_path);
-      out = std::make_unique<std::ofstream>(std::move(file_output));
-    }
     double average_time = std::accumulate(times.begin(), times.end(), 0.0) /
                           static_cast<double>(n_reps);
     auto [min_time, max_time] = std::minmax_element(times.begin(), times.end());
-    *out << "RESULT ";
-    *out << "n_reps=" << n_reps << " data_size=" << data_size
+    out << "RESULT ";
+    out << "n_reps=" << n_reps << " data_size=" << data_size
          << " mpi_type_constructor=" << to_string(mpi_type_constructor)
          << " value_type=" << value_type << " ";
-    *out << "average_time=" << average_time << " min_time=" << *min_time
+    out << "average_time=" << average_time << " min_time=" << *min_time
          << " max_time=" << *max_time << "\n";
   }
 }
@@ -160,13 +153,21 @@ auto main(int argc, char* argv[]) -> int {
   app.add_option("--json_output_path", json_output_path);
   CLI11_PARSE(app, argc, argv);
 
+  std::unique_ptr<std::ostream> out;
+  if (json_output_path == "stdout") {
+    out = std::make_unique<std::ostream>(std::cout.rdbuf());
+  } else {
+    std::ofstream file_output(json_output_path);
+    out = std::make_unique<std::ofstream>(std::move(file_output));
+  }
+
   kamping::Communicator comm;
 
   auto times = benchmark<std::pair<std::int32_t, int64_t>>(
       comm, n_reps, data_size, mpi_type_constructor);
-  log_result(times, n_reps, data_size, mpi_type_constructor, "std::pair<int32_t,int64_t>", json_output_path);
+  log_result(times, n_reps, data_size, mpi_type_constructor, "std::pair<int32_t,int64_t>", *out);
   times = benchmark<std::pair<std::int64_t, int64_t>>(
       comm, n_reps, data_size, mpi_type_constructor);
-  log_result(times, n_reps, data_size, mpi_type_constructor, "std::pair<int64_t,int64_t>", json_output_path);
+  log_result(times, n_reps, data_size, mpi_type_constructor, "std::pair<int64_t,int64_t>", *out);
   return 0;
 }
