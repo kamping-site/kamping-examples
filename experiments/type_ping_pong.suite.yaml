@@ -1,4 +1,4 @@
-name: type_ping_pong_foo_ompi
+name: type_ping_pong
 executable: type_ping_pong
 tasks_per_node: 1
 ncores: [2]
@@ -18,5 +18,5 @@ graphs:
     name: pairs
     data_size: 1000000
 config:
-  - mpi_type_constructor: [pair_as_bytes,contiguous_type,create_struct]
+  - mpi_type_constructor: [pair_as_bytes,contiguous_type,create_struct, builtin, serialization]
     n_reps: [100]

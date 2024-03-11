@@ -34,7 +34,7 @@ FetchContent_Declare(
 FetchContent_Declare(
   kamping
   GIT_REPOSITORY https://github.com/kamping-site/kamping.git
-  GIT_TAG b3a563f
+  GIT_TAG 09cb165
   SYSTEM OVERRIDE_FIND_PACKAGE)
 
 FetchContent_Declare(
