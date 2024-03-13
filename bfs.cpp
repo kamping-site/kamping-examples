@@ -417,9 +417,13 @@ auto main(int argc, char *argv[]) -> int {
         case ExchangeType::Sparse:
           return std::make_unique<FrontierSparseExchange>(
               FrontierSparseExchange{kamping::comm_world()});
-        case ExchangeType::Grid:
-          return std::make_unique<FrontierGridExchange>(
+        case ExchangeType::Grid: {
+          kamping::measurements::timer().start("create_grid");
+          auto frontier = std::make_unique<FrontierGridExchange>(
               FrontierGridExchange{kamping::comm_world()});
+          kamping::measurements::timer().stop_and_append();
+          return frontier;
+        }
         default:
           KASSERT(false, "should never be called");
           return std::make_unique<FrontierRegularExchange>(
