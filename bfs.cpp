@@ -55,13 +55,45 @@ struct Graph {
     span = span.subspan(begin, end - begin);
     return span;
   }
+
+  std::vector<int> get_comm_partners() const {
+    std::unordered_set<int> comm_partners_set;
+    std::vector<int> comm_partners;
+    for (auto v : vertices()) {
+      for (auto n : neighbors(v)) {
+        comm_partners_set.insert(home_rank(n));
+      }
+    }
+    for (const auto &v : comm_partners_set) {
+      comm_partners.emplace_back(v);
+    }
+    std::sort(comm_partners.begin(), comm_partners.end());
+    return comm_partners;
+  }
 };
 
 struct Frontier {
   std::unordered_map<int, std::vector<VertexId>> _data;
   kamping::Communicator<> const &_comm;
-
+  std::vector<int> _comm_partners;
+  std::unordered_map<int, int> _global_rank_to_graph_rank;
+  MPI_Comm _graph_comm;
   Frontier(kamping::Communicator<> const &comm) : _comm(comm) {}
+  Frontier(kamping::Communicator<> const &comm,
+           const std::vector<int> &comm_partners)
+      : _comm(comm), _comm_partners(comm_partners) {
+    kamping::measurements::timer().start("create_topology");
+
+    MPI_Dist_graph_create_adjacent(
+        _comm.mpi_communicator(), static_cast<int>(_comm_partners.size()),
+        comm_partners.data(), MPI_UNWEIGHTED,
+        static_cast<int>(_comm_partners.size()), comm_partners.data(),
+        MPI_UNWEIGHTED, MPI_INFO_NULL, false, &_graph_comm);
+    for (std::size_t i = 0; i < _comm_partners.size(); ++i) {
+      _global_rank_to_graph_rank[_comm_partners[i]] = i;
+    }
+    kamping::measurements::timer().stop_and_add();
+  }
   void add_vertex(VertexId v, int rank) { _data[rank].push_back(v); }
 
   std::vector<VertexId> exchange() {
@@ -88,6 +120,49 @@ struct Frontier {
                                         kamping::send_counts(send_counts));
     kamping::measurements::timer().stop_and_add();
     return new_frontier;
+  }
+
+  std::vector<VertexId> exchange_neighborhood() {
+    SPDLOG_DEBUG("exchanging frontier: frontiers={}", _data);
+    std::vector<VertexId> send_buffer;
+    std::vector<int> send_counts(_comm_partners.size(), 0);
+    kamping::measurements::timer().start("copy_buffer");
+    for (size_t rank = 0; rank < _comm.size(); rank++) {
+      auto it = _data.find(static_cast<int>(rank));
+      if (it == _data.end()) {
+        continue;
+      }
+      auto &local_data = it->second;
+      send_buffer.insert(send_buffer.end(), local_data.begin(),
+                         local_data.end());
+      auto graph_rank = _global_rank_to_graph_rank[rank];
+      send_counts[graph_rank] = local_data.size();
+      std::vector<VertexId>{}.swap(local_data);
+    }
+    _data.clear();
+    kamping::measurements::timer().stop_and_add();
+
+    const int num_comm_partners = static_cast<int>(_comm_partners.size());
+    kamping::measurements::timer().start("alltoall");
+    std::vector<int> recv_counts(static_cast<size_t>(num_comm_partners));
+    MPI_Neighbor_alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1,
+                          MPI_INT, _graph_comm);
+    std::vector<int> send_displs(_comm_partners.size(), 0);
+    std::vector<int> recv_displs(_comm_partners.size(), 0);
+    std::exclusive_scan(send_counts.begin(), send_counts.end(),
+                        send_displs.begin(), int(0));
+    std::exclusive_scan(recv_counts.begin(), recv_counts.end(),
+                        recv_displs.begin(), int(0));
+    size_t recv_buf_size =
+        static_cast<size_t>(recv_displs.back() + recv_counts.back());
+    std::vector<VertexId> recv_buf(recv_buf_size);
+    MPI_Neighbor_alltoallv(
+        send_buffer.data(), send_counts.data(), send_displs.data(),
+        kamping::mpi_type_traits<VertexId>::data_type(), recv_buf.data(),
+        recv_counts.data(), recv_displs.data(),
+        kamping::mpi_type_traits<VertexId>::data_type(), _graph_comm);
+    kamping::measurements::timer().stop_and_add();
+    return recv_buf;
   }
 
   std::vector<VertexId> exchange_sparse() {
@@ -136,9 +211,9 @@ struct Frontier {
   //   // std::for_each(recv_displs.begin(), recv_displs.end(),
   //   //               [](auto &displ) { displ *= sizeof(VertexId); });
   //   std::vector<VertexId> new_frontier(recv_count);
-  //   SPDLOG_DEBUG("send_counts={}, send_displs={}", send_counts, send_displs);
-  //   SPDLOG_DEBUG("recv_counts={}, recv_displs={}", recv_counts, recv_displs);
-  //   MPI_Alltoallv_c(
+  //   SPDLOG_DEBUG("send_counts={}, send_displs={}", send_counts,
+  //   send_displs); SPDLOG_DEBUG("recv_counts={}, recv_displs={}",
+  //   recv_counts, recv_displs); MPI_Alltoallv_c(
   //       MPI_BOTTOM,                                       // sendbuf
   //       send_counts.data(),                               // send counts
   //       send_displs.data(),                               // send displs
@@ -216,7 +291,7 @@ struct Frontier {
   }
 };
 
-enum class ExchangeType { NoCopy, Sparse, Regular };
+enum class ExchangeType { NoCopy, Sparse, Regular, MPINeighborhood };
 
 auto main(int argc, char *argv[]) -> int {
   auto formatter = std::make_unique<spdlog::pattern_formatter>();
@@ -239,6 +314,7 @@ auto main(int argc, char *argv[]) -> int {
           CLI::CheckedTransformer(std::unordered_map<std::string, ExchangeType>{
               {"no_copy", ExchangeType::NoCopy},
               {"sparse", ExchangeType::Sparse},
+              {"neighborhood", ExchangeType::MPINeighborhood},
               {"regular", ExchangeType::Regular}}));
   size_t iterations = 1;
   app.add_option("--iterations", iterations, "Number of iterations");
@@ -275,7 +351,13 @@ auto main(int argc, char *argv[]) -> int {
     std::vector<size_t> bfs_level(g.last_vertex() - g.first_vertex(),
                                   unreachable);
 
-    Frontier frontier{kamping::comm_world()};
+    Frontier frontier = [&]() {
+      if (exchange_type == ExchangeType::MPINeighborhood) {
+        return Frontier{kamping::comm_world(), g.get_comm_partners()};
+      } else {
+        return Frontier{kamping::comm_world()};
+      }
+    }();
     size_t level = 0;
     while (!comm.allreduce_single(kamping::send_buf(current_frontier.empty()),
                                   kamping::op(std::logical_and<>{}))) {
@@ -302,6 +384,9 @@ auto main(int argc, char *argv[]) -> int {
           break;
         case ExchangeType::Regular:
           current_frontier = frontier.exchange();
+          break;
+        case ExchangeType::MPINeighborhood:
+          current_frontier = frontier.exchange_neighborhood();
           break;
       }
       level++;
@@ -335,6 +420,9 @@ auto main(int argc, char *argv[]) -> int {
         break;
       case ExchangeType::Regular:
         *output_stream << "\"regular\"";
+        break;
+      case ExchangeType::MPINeighborhood:
+        *output_stream << "\"neighborhood\"";
         break;
     }
     *output_stream << ",\n";

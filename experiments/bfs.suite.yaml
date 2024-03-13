@@ -29,5 +29,5 @@ graphs:
     gamma: 2.6
     scale_weak: TRUE
 config:
-  - exchange_type: [regular, sparse, no_copy]
+  - exchange_type: [regular, sparse, no_copy, neighorhood]
     iterations: [5]
