@@ -7,12 +7,14 @@
 #include <kamping/collectives/allreduce.hpp>
 #include <kamping/collectives/alltoall.hpp>
 #include <kamping/collectives/reduce.hpp>
-#include <kamping/collectives/sparse_alltoall.hpp>
 #include <kamping/communicator.hpp>
 #include <kamping/environment.hpp>
 #include <kamping/measurements/printer.hpp>
 #include <kamping/measurements/timer.hpp>
 #include <kamping/mpi_datatype.hpp>
+#include <kamping/plugin/alltoall_grid.hpp>
+#include <kamping/plugin/alltoall_sparse.hpp>
+#include <memory>
 #include <random>
 #include <ranges>
 
@@ -72,31 +74,21 @@ struct Graph {
   }
 };
 
-struct Frontier {
-  std::unordered_map<int, std::vector<VertexId>> _data;
-  kamping::Communicator<> const &_comm;
-  std::vector<int> _comm_partners;
-  std::unordered_map<int, int> _global_rank_to_graph_rank;
-  MPI_Comm _graph_comm;
-  Frontier(kamping::Communicator<> const &comm) : _comm(comm) {}
-  Frontier(kamping::Communicator<> const &comm,
-           const std::vector<int> &comm_partners)
-      : _comm(comm), _comm_partners(comm_partners) {
-    kamping::measurements::timer().start("create_topology");
-
-    MPI_Dist_graph_create_adjacent(
-        _comm.mpi_communicator(), static_cast<int>(_comm_partners.size()),
-        comm_partners.data(), MPI_UNWEIGHTED,
-        static_cast<int>(_comm_partners.size()), comm_partners.data(),
-        MPI_UNWEIGHTED, MPI_INFO_NULL, false, &_graph_comm);
-    for (std::size_t i = 0; i < _comm_partners.size(); ++i) {
-      _global_rank_to_graph_rank[_comm_partners[i]] = i;
-    }
-    kamping::measurements::timer().stop_and_add();
-  }
+class Frontier {
+ public:
   void add_vertex(VertexId v, int rank) { _data[rank].push_back(v); }
+  virtual std::vector<VertexId> exchange() = 0;
+  virtual ~Frontier(){};
 
-  std::vector<VertexId> exchange() {
+ protected:
+  std::unordered_map<int, std::vector<VertexId>> _data;
+};
+
+class FrontierRegularExchange final : public Frontier {
+ public:
+  FrontierRegularExchange(const kamping::Communicator<std::vector> &comm)
+      : _comm{comm} {}
+  std::vector<VertexId> exchange() override {
     SPDLOG_DEBUG("exchanging frontier: frontiers={}", _data);
     std::vector<VertexId> send_buffer;
     std::vector<int> send_counts(_comm.size());
@@ -122,56 +114,58 @@ struct Frontier {
     return new_frontier;
   }
 
-  std::vector<VertexId> exchange_neighborhood() {
+ private:
+  kamping::Communicator<std::vector> const &_comm;
+};
+
+class FrontierGridExchange final : public Frontier {
+ public:
+  FrontierGridExchange(const kamping::Communicator<std::vector> &comm)
+      : _comm{comm.mpi_communicator()},
+        _grid_comm{_comm.make_grid_communicator()} {}
+  std::vector<VertexId> exchange() override {
     SPDLOG_DEBUG("exchanging frontier: frontiers={}", _data);
     std::vector<VertexId> send_buffer;
-    std::vector<int> send_counts(_comm_partners.size(), 0);
+    std::vector<int> send_counts(_comm.size());
     kamping::measurements::timer().start("copy_buffer");
     for (size_t rank = 0; rank < _comm.size(); rank++) {
       auto it = _data.find(static_cast<int>(rank));
       if (it == _data.end()) {
+        send_counts[rank] = 0;
         continue;
       }
       auto &local_data = it->second;
       send_buffer.insert(send_buffer.end(), local_data.begin(),
                          local_data.end());
-      auto graph_rank = _global_rank_to_graph_rank[rank];
-      send_counts[graph_rank] = local_data.size();
+      send_counts[rank] = static_cast<int>(local_data.size());
       std::vector<VertexId>{}.swap(local_data);
     }
+    kamping::measurements::timer().stop_and_add();
     _data.clear();
-    kamping::measurements::timer().stop_and_add();
-
-    const int num_comm_partners = static_cast<int>(_comm_partners.size());
     kamping::measurements::timer().start("alltoall");
-    std::vector<int> recv_counts(static_cast<size_t>(num_comm_partners));
-    MPI_Neighbor_alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1,
-                          MPI_INT, _graph_comm);
-    std::vector<int> send_displs(_comm_partners.size(), 0);
-    std::vector<int> recv_displs(_comm_partners.size(), 0);
-    std::exclusive_scan(send_counts.begin(), send_counts.end(),
-                        send_displs.begin(), int(0));
-    std::exclusive_scan(recv_counts.begin(), recv_counts.end(),
-                        recv_displs.begin(), int(0));
-    size_t recv_buf_size =
-        static_cast<size_t>(recv_displs.back() + recv_counts.back());
-    std::vector<VertexId> recv_buf(recv_buf_size);
-    MPI_Neighbor_alltoallv(
-        send_buffer.data(), send_counts.data(), send_displs.data(),
-        kamping::mpi_type_traits<VertexId>::data_type(), recv_buf.data(),
-        recv_counts.data(), recv_displs.data(),
-        kamping::mpi_type_traits<VertexId>::data_type(), _graph_comm);
+    auto new_frontier = _grid_comm.alltoallv(kamping::send_buf(send_buffer),
+                                             kamping::send_counts(send_counts));
     kamping::measurements::timer().stop_and_add();
-    return recv_buf;
+    return {};
   }
 
-  std::vector<VertexId> exchange_sparse() {
+ private:
+  kamping::Communicator<std::vector, kamping::plugin::GridCommunicator> _comm;
+  kamping::plugin::grid::GridCommunicator<std::vector> _grid_comm;
+};
+
+class FrontierSparseExchange final : public Frontier {
+ public:
+  FrontierSparseExchange(const kamping::Communicator<std::vector> &comm)
+      : _comm{comm.mpi_communicator()} {}
+
+  std::vector<VertexId> exchange() override {
+    using namespace kamping::plugin::sparse_alltoall;
     SPDLOG_DEBUG("exchanging frontier: frontiers={}", _data);
     kamping::measurements::timer().start("alltoall");
     std::vector<VertexId> new_frontier;
     _comm.alltoallv_sparse(
-        kamping::sparse_send_buf(_data),
-        kamping::on_message([&](auto &probed_message) {
+        sparse_send_buf(_data), on_message([&](auto &probed_message) {
           auto old_size = static_cast<std::vector<VertexId>::difference_type>(
               new_frontier.size());
           new_frontier.resize(new_frontier.size() +
@@ -185,50 +179,101 @@ struct Frontier {
     return new_frontier;
   }
 
-  // std::vector<VertexId> exchange_no_copy() {
-  //   SPDLOG_DEBUG("exchanging frontier: frontiers={}", _data);
+ private:
+  kamping::Communicator<std::vector, kamping::plugin::SparseAlltoall> const
+      _comm;
+};
 
-  //   std::vector<MPI_Count> send_counts(_comm.size());
-  //   std::vector<MPI_Aint> send_displs(_comm.size());
-  //   for (size_t rank = 0; rank < _comm.size(); rank++) {
-  //     auto it = _data.find(static_cast<int>(rank));
-  //     if (it == _data.end()) {
-  //       send_counts[rank] = 0;
-  //       continue;
-  //     }
-  //     MPI_Aint addr;
-  //     MPI_Get_address(it->second.data(), &addr);
-  //     send_displs[rank] = addr;
-  //     send_counts[rank] = static_cast<MPI_Count>(it->second.size());
-  //   }
-  //   std::vector<MPI_Count> recv_counts =
-  //       _comm.alltoall(kamping::send_buf(send_counts));
-  //   std::vector<MPI_Aint> recv_displs(_comm.size());
-  //   std::exclusive_scan(recv_counts.begin(), recv_counts.end(),
-  //                       recv_displs.begin(), 0);
-  //   size_t recv_count =
-  //       static_cast<size_t>(recv_displs.back() + recv_counts.back());
-  //   // std::for_each(recv_displs.begin(), recv_displs.end(),
-  //   //               [](auto &displ) { displ *= sizeof(VertexId); });
-  //   std::vector<VertexId> new_frontier(recv_count);
-  //   SPDLOG_DEBUG("send_counts={}, send_displs={}", send_counts,
-  //   send_displs); SPDLOG_DEBUG("recv_counts={}, recv_displs={}",
-  //   recv_counts, recv_displs); MPI_Alltoallv_c(
-  //       MPI_BOTTOM,                                       // sendbuf
-  //       send_counts.data(),                               // send counts
-  //       send_displs.data(),                               // send displs
-  //       kamping::mpi_type_traits<VertexId>::data_type(),  // send type
-  //       new_frontier.data(),                              // recv buf
-  //       recv_counts.data(),                               // recv counts
-  //       recv_displs.data(),                               // recv displs
-  //       kamping::mpi_type_traits<VertexId>::data_type(),  // recv type
-  //       _comm.mpi_communicator());
-  //   SPDLOG_DEBUG("new_frontier={}", new_frontier);
-  //   _data.clear();
-  //   return new_frontier;
-  // }
+class FrontierMPINeighborhoodExchange final : public Frontier {
+ public:
+  FrontierMPINeighborhoodExchange(
+      kamping::Communicator<std::vector> const &comm,
+      const std::vector<int> &comm_partners)
+      : _comm(comm), _comm_partners(comm_partners) {
+    kamping::measurements::timer().start("create_topology");
 
-  std::vector<VertexId> exchange_no_copy_datatype() {
+    MPI_Dist_graph_create_adjacent(
+        _comm.mpi_communicator(), static_cast<int>(_comm_partners.size()),
+        comm_partners.data(), MPI_UNWEIGHTED,
+        static_cast<int>(_comm_partners.size()), comm_partners.data(),
+        MPI_UNWEIGHTED, MPI_INFO_NULL, false, &_graph_comm);
+
+    kamping::measurements::timer().stop_and_add();
+
+    // create global rank to graph communicator rank lookup table
+    for (std::size_t i = 0; i < _comm_partners.size(); ++i) {
+      _global_rank_to_graph_rank[_comm_partners[i]] = static_cast<int>(i);
+    }
+  }
+
+  std::vector<VertexId> exchange() override {
+    SPDLOG_DEBUG("exchanging frontier: frontiers={}", _data);
+    std::vector<VertexId> send_buffer;
+    std::vector<int> send_counts(_comm_partners.size(), 0);
+    kamping::measurements::timer().start("copy_buffer");
+    for (size_t rank = 0; rank < _comm.size(); rank++) {
+      auto it = _data.find(static_cast<int>(rank));
+      if (it == _data.end()) {
+        continue;
+      }
+      auto &local_data = it->second;
+      send_buffer.insert(send_buffer.end(), local_data.begin(),
+                         local_data.end());
+      send_counts[graph_rank(rank)] = static_cast<int>(local_data.size());
+      std::vector<VertexId>{}.swap(local_data);
+    }
+    _data.clear();
+    kamping::measurements::timer().stop_and_add();
+
+    kamping::measurements::timer().start("alltoall");
+
+    // exchange recv counts
+    std::vector<int> recv_counts(_comm_partners.size());
+    MPI_Neighbor_alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1,
+                          MPI_INT, _graph_comm);
+
+    // compute send/recv displacements
+    std::vector<int> send_displs(_comm_partners.size(), 0);
+    std::vector<int> recv_displs(_comm_partners.size(), 0);
+    std::exclusive_scan(send_counts.begin(), send_counts.end(),
+                        send_displs.begin(), int(0));
+    std::exclusive_scan(recv_counts.begin(), recv_counts.end(),
+                        recv_displs.begin(), int(0));
+
+    // perform actual frontier exchange
+    const size_t recv_buf_size =
+        static_cast<size_t>(recv_displs.back() + recv_counts.back());
+    std::vector<VertexId> recv_buf(recv_buf_size);
+    MPI_Neighbor_alltoallv(
+        send_buffer.data(), send_counts.data(), send_displs.data(),
+        kamping::mpi_type_traits<VertexId>::data_type(), recv_buf.data(),
+        recv_counts.data(), recv_displs.data(),
+        kamping::mpi_type_traits<VertexId>::data_type(), _graph_comm);
+
+    kamping::measurements::timer().stop_and_add();
+    return recv_buf;
+  }
+
+ private:
+  size_t graph_rank(size_t global_rank) {
+    auto it = _global_rank_to_graph_rank.find(static_cast<int>(global_rank));
+    KASSERT(it != _global_rank_to_graph_rank.end());
+    return static_cast<size_t>(it->second);
+  }
+
+ private:
+  kamping::Communicator<std::vector> const &_comm;
+  std::vector<int> _comm_partners;
+  std::unordered_map<int, int> _global_rank_to_graph_rank;
+  MPI_Comm _graph_comm;
+};
+
+class FrontierAlltoallwExchange final : public Frontier {
+ public:
+  FrontierAlltoallwExchange(const kamping::Communicator<std::vector> &comm)
+      : _comm{comm} {}
+
+  std::vector<VertexId> exchange() override {
     SPDLOG_DEBUG("exchanging frontier: frontiers={}", _data);
 
     std::vector<int> send_counts(_comm.size(), 0);
@@ -289,9 +334,12 @@ struct Frontier {
     }
     return recv_buf;
   }
+
+ private:
+  kamping::Communicator<std::vector> const &_comm;
 };
 
-enum class ExchangeType { NoCopy, Sparse, Regular, MPINeighborhood };
+enum class ExchangeType { NoCopy, Sparse, Regular, MPINeighborhood, Grid };
 
 auto main(int argc, char *argv[]) -> int {
   auto formatter = std::make_unique<spdlog::pattern_formatter>();
@@ -315,6 +363,7 @@ auto main(int argc, char *argv[]) -> int {
               {"no_copy", ExchangeType::NoCopy},
               {"sparse", ExchangeType::Sparse},
               {"neighborhood", ExchangeType::MPINeighborhood},
+              {"grid", ExchangeType::Grid},
               {"regular", ExchangeType::Regular}}));
   size_t iterations = 1;
   app.add_option("--iterations", iterations, "Number of iterations");
@@ -331,7 +380,9 @@ auto main(int argc, char *argv[]) -> int {
       graph, kamping::mpi_type_traits<VertexId>::data_type(), MPI_COMM_WORLD);
   Graph g{std::move(xadj), std::move(adjncy), std::move(dist),
           kamping::comm_world()};
-  auto const &comm = kamping::comm_world();
+  kamping::Communicator<std::vector, kamping::plugin::GridCommunicator,
+                        kamping::plugin::SparseAlltoall>
+      comm;
   std::default_random_engine gen(seed);
   std::uniform_int_distribution<VertexId> vertex_dist(0,
                                                       g.global_num_vertices());
@@ -351,11 +402,28 @@ auto main(int argc, char *argv[]) -> int {
     std::vector<size_t> bfs_level(g.last_vertex() - g.first_vertex(),
                                   unreachable);
 
-    Frontier frontier = [&]() {
-      if (exchange_type == ExchangeType::MPINeighborhood) {
-        return Frontier{kamping::comm_world(), g.get_comm_partners()};
-      } else {
-        return Frontier{kamping::comm_world()};
+    auto frontier = [&]() -> std::unique_ptr<Frontier> {
+      switch (exchange_type) {
+        case ExchangeType::MPINeighborhood:
+          return std::make_unique<FrontierMPINeighborhoodExchange>(
+              FrontierMPINeighborhoodExchange{kamping::comm_world(),
+                                              g.get_comm_partners()});
+        case ExchangeType::Regular:
+          return std::make_unique<FrontierRegularExchange>(
+              FrontierRegularExchange{kamping::comm_world()});
+        case ExchangeType::NoCopy:
+          return std::make_unique<FrontierAlltoallwExchange>(
+              FrontierAlltoallwExchange{kamping::comm_world()});
+        case ExchangeType::Sparse:
+          return std::make_unique<FrontierSparseExchange>(
+              FrontierSparseExchange{kamping::comm_world()});
+        case ExchangeType::Grid:
+          return std::make_unique<FrontierGridExchange>(
+              FrontierGridExchange{kamping::comm_world()});
+        default:
+          KASSERT(false, "should never be called");
+          return std::make_unique<FrontierRegularExchange>(
+              FrontierRegularExchange{kamping::comm_world()});
       }
     }();
     size_t level = 0;
@@ -372,23 +440,10 @@ auto main(int argc, char *argv[]) -> int {
         for (auto u : g.neighbors(v)) {
           int rank = g.home_rank(u);
           SPDLOG_DEBUG("adding {} to frontier of {}", u, rank);
-          frontier.add_vertex(u, rank);
+          frontier->add_vertex(u, rank);
         }
       }
-      switch (exchange_type) {
-        case ExchangeType::NoCopy:
-          current_frontier = frontier.exchange_no_copy_datatype();
-          break;
-        case ExchangeType::Sparse:
-          current_frontier = frontier.exchange_sparse();
-          break;
-        case ExchangeType::Regular:
-          current_frontier = frontier.exchange();
-          break;
-        case ExchangeType::MPINeighborhood:
-          current_frontier = frontier.exchange_neighborhood();
-          break;
-      }
+      current_frontier = frontier->exchange();
       level++;
       SPDLOG_DEBUG("level={}", level);
     }
@@ -423,6 +478,9 @@ auto main(int argc, char *argv[]) -> int {
         break;
       case ExchangeType::MPINeighborhood:
         *output_stream << "\"neighborhood\"";
+        break;
+      case ExchangeType::Grid:
+        *output_stream << "\"grid\"";
         break;
     }
     *output_stream << ",\n";
