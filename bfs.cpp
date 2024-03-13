@@ -419,10 +419,10 @@ auto main(int argc, char *argv[]) -> int {
               FrontierSparseExchange{kamping::comm_world()});
         case ExchangeType::Grid: {
           kamping::measurements::timer().start("create_grid");
-          auto frontier = std::make_unique<FrontierGridExchange>(
+          auto frontier_ = std::make_unique<FrontierGridExchange>(
               FrontierGridExchange{kamping::comm_world()});
           kamping::measurements::timer().stop_and_append();
-          return frontier;
+          return frontier_;
         }
         default:
           KASSERT(false, "should never be called");
