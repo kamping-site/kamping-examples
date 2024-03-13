@@ -146,7 +146,7 @@ class FrontierGridExchange final : public Frontier {
     auto new_frontier = _grid_comm.alltoallv(kamping::send_buf(send_buffer),
                                              kamping::send_counts(send_counts));
     kamping::measurements::timer().stop_and_add();
-    return {};
+    return new_frontier;
   }
 
  private:
