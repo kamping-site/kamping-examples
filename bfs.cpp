@@ -438,7 +438,8 @@ auto main(int argc, char *argv[]) -> int {
   auto reference_frontier = std::make_unique<FrontierRegularExchange>(
       FrontierRegularExchange{kamping::comm_world()});
   const auto reference_bfs_levels =
-      execute_bfs(reference_frontier, comm, g, root);
+    execute_bfs(reference_frontier, comm, g, root);
+  kamping::measurements::timer().clear();
   for (size_t iteration = 0; iteration < iterations; iteration++) {
     // kamping::measurements::timer().synchronize_and_start("bfs");
 
