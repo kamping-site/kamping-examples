@@ -440,7 +440,7 @@ auto main(int argc, char *argv[]) -> int {
   const auto reference_bfs_levels =
       execute_bfs(reference_frontier, comm, g, root);
   for (size_t iteration = 0; iteration < iterations; iteration++) {
-    kamping::measurements::timer().synchronize_and_start("bfs");
+    // kamping::measurements::timer().synchronize_and_start("bfs");
 
     auto frontier = [&]() -> std::unique_ptr<Frontier> {
       switch (exchange_type) {
@@ -490,6 +490,8 @@ auto main(int argc, char *argv[]) -> int {
   if (kamping::comm_world().is_root()) {
     *output_stream << "{\n";
   }
+  auto max_bfs_level = *std::ranges::max_element(reference_bfs_levels);
+  comm.allreduce(kamping::send_recv_buf(max_bfs_level), kamping::op(kamping::ops::max<> {}));
   kamping::measurements::timer().aggregate_and_print(
       kamping::measurements::SimpleJsonPrinter<>{*output_stream});
   if (kamping::comm_world().is_root()) {
@@ -517,7 +519,9 @@ auto main(int argc, char *argv[]) -> int {
     *output_stream << "  \"p\": " << kamping::comm_world().size() << ",\n";
     *output_stream << "  \"kagen_option_string\": \"" << kagen_option_string
                    << "\",\n";
-    *output_stream << "  \"seed\": " << seed << "\n";
+    *output_stream << "  \"seed\": " << seed << ",\n";
+    *output_stream << "  \"iterations\": " << iterations << ",\n";
+    *output_stream << "  \"bfs_levels\": " << max_bfs_level << "\n";
     *output_stream << "}\n";
     *output_stream << "}";
   }
