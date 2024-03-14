@@ -105,12 +105,12 @@ class FrontierRegularExchange final : public Frontier {
       send_counts[rank] = static_cast<int>(local_data.size());
       std::vector<VertexId>{}.swap(local_data);
     }
-    kamping::measurements::timer().stop_and_add();
+    kamping::measurements::timer().stop_and_append();
     _data.clear();
     kamping::measurements::timer().start("alltoall");
     auto new_frontier = _comm.alltoallv(kamping::send_buf(send_buffer),
                                         kamping::send_counts(send_counts));
-    kamping::measurements::timer().stop_and_add();
+    kamping::measurements::timer().stop_and_append();
     return new_frontier;
   }
 
@@ -140,12 +140,12 @@ class FrontierGridExchange final : public Frontier {
       send_counts[rank] = static_cast<int>(local_data.size());
       std::vector<VertexId>{}.swap(local_data);
     }
-    kamping::measurements::timer().stop_and_add();
+    kamping::measurements::timer().stop_and_append();
     _data.clear();
     kamping::measurements::timer().start("alltoall");
     auto new_frontier = _grid_comm.alltoallv(kamping::send_buf(send_buffer),
                                              kamping::send_counts(send_counts));
-    kamping::measurements::timer().stop_and_add();
+    kamping::measurements::timer().stop_and_append();
     return new_frontier;
   }
 
@@ -162,6 +162,8 @@ class FrontierSparseExchange final : public Frontier {
   std::vector<VertexId> exchange() override {
     using namespace kamping::plugin::sparse_alltoall;
     SPDLOG_DEBUG("exchanging frontier: frontiers={}", _data);
+    kamping::measurements::timer().start("copy_buffer");
+    kamping::measurements::timer().stop_and_append();
     kamping::measurements::timer().start("alltoall");
     std::vector<VertexId> new_frontier;
     _comm.alltoallv_sparse(
@@ -174,7 +176,7 @@ class FrontierSparseExchange final : public Frontier {
                                           new_frontier.end()};
           probed_message.recv(kamping::recv_buf(message));
         }));
-    kamping::measurements::timer().stop_and_add();
+    kamping::measurements::timer().stop_and_append();
     _data.clear();
     return new_frontier;
   }
@@ -198,7 +200,7 @@ class FrontierMPINeighborhoodExchange final : public Frontier {
         static_cast<int>(_comm_partners.size()), comm_partners.data(),
         MPI_UNWEIGHTED, MPI_INFO_NULL, false, &_graph_comm);
 
-    kamping::measurements::timer().stop_and_add();
+    kamping::measurements::timer().stop_and_append();
 
     // create global rank to graph communicator rank lookup table
     for (std::size_t i = 0; i < _comm_partners.size(); ++i) {
@@ -223,7 +225,7 @@ class FrontierMPINeighborhoodExchange final : public Frontier {
       std::vector<VertexId>{}.swap(local_data);
     }
     _data.clear();
-    kamping::measurements::timer().stop_and_add();
+    kamping::measurements::timer().stop_and_append();
 
     kamping::measurements::timer().start("alltoall");
 
@@ -250,7 +252,7 @@ class FrontierMPINeighborhoodExchange final : public Frontier {
         recv_counts.data(), recv_displs.data(),
         kamping::mpi_type_traits<VertexId>::data_type(), _graph_comm);
 
-    kamping::measurements::timer().stop_and_add();
+    kamping::measurements::timer().stop_and_append();
     return recv_buf;
   }
 
@@ -296,10 +298,10 @@ class FrontierAlltoallwExchange final : public Frontier {
       MPI_Type_create_hindexed(1, &block_length, &address,
                                kamping::mpi_type_traits<VertexId>::data_type(),
                                &send_types[rank]);
-      kamping::measurements::timer().stop_and_add();
+      kamping::measurements::timer().stop_and_append();
       kamping::measurements::timer().start("type_commit");
       MPI_Type_commit(&send_types[rank]);
-      kamping::measurements::timer().stop_and_add();
+      kamping::measurements::timer().stop_and_append();
       send_counts[rank] = 1;
       real_send_counts[rank] = static_cast<int>(local_data.size());
     }
@@ -322,14 +324,14 @@ class FrontierAlltoallwExchange final : public Frontier {
                   send_types.data(), recv_buf.data(), recv_counts.data(),
                   recv_displs.data(), recv_types.data(),
                   _comm.mpi_communicator());
-    kamping::measurements::timer().stop_and_add();
+    kamping::measurements::timer().stop_and_append();
     _data.clear();
     SPDLOG_DEBUG("recv_buf={}", recv_buf);
     for (auto &type : send_types) {
       if (type != MPI_BYTE) {
         kamping::measurements::timer().start("type_free");
         MPI_Type_free(&type);
-        kamping::measurements::timer().stop_and_add();
+        kamping::measurements::timer().stop_and_append();
       }
     }
     return recv_buf;
@@ -340,6 +342,45 @@ class FrontierAlltoallwExchange final : public Frontier {
 };
 
 enum class ExchangeType { NoCopy, Sparse, Regular, MPINeighborhood, Grid };
+
+template <typename Frontier, typename Comm>
+auto execute_bfs(Frontier &frontier, const Comm &comm, const Graph &g,
+                 VertexId root) {
+  constexpr size_t unreachable = std::numeric_limits<size_t>::max();
+  kamping::measurements::timer().synchronize_and_start("bfs");
+  std::vector<VertexId> current_frontier;
+  if (g.is_local(root)) {
+    current_frontier.push_back(root);
+  }
+  std::vector<size_t> bfs_level(g.last_vertex() - g.first_vertex(),
+                                unreachable);
+  size_t level = 0;
+  while (!comm.allreduce_single(kamping::send_buf(current_frontier.empty()),
+                                kamping::op(std::logical_and<>{}))) {
+    SPDLOG_DEBUG("frontier={}", current_frontier);
+
+    kamping::measurements::timer().start("local_frontier_processing");
+    for (auto v : current_frontier) {
+      SPDLOG_DEBUG("visiting {}", v);
+      KASSERT(g.is_local(v));
+      if (bfs_level[v - g.first_vertex()] != unreachable) {
+        continue;
+      }
+      bfs_level[v - g.first_vertex()] = level;
+      for (auto u : g.neighbors(v)) {
+        int rank = g.home_rank(u);
+        SPDLOG_DEBUG("adding {} to frontier of {}", u, rank);
+        frontier->add_vertex(u, rank);
+      }
+    }
+    kamping::measurements::timer().stop_and_append();
+    current_frontier = frontier->exchange();
+    level++;
+    SPDLOG_DEBUG("level={}", level);
+  }
+  kamping::measurements::timer().stop_and_append();
+  return bfs_level;
+}
 
 auto main(int argc, char *argv[]) -> int {
   auto formatter = std::make_unique<spdlog::pattern_formatter>();
@@ -393,14 +434,13 @@ auto main(int argc, char *argv[]) -> int {
                g.vertices() | std::views::transform(
                                   [&](auto v) { return g.home_rank(v); }));
   constexpr size_t unreachable = std::numeric_limits<size_t>::max();
+
+  auto reference_frontier = std::make_unique<FrontierRegularExchange>(
+      FrontierRegularExchange{kamping::comm_world()});
+  const auto reference_bfs_levels =
+      execute_bfs(reference_frontier, comm, g, root);
   for (size_t iteration = 0; iteration < iterations; iteration++) {
     kamping::measurements::timer().synchronize_and_start("bfs");
-    std::vector<VertexId> current_frontier;
-    if (g.is_local(root)) {
-      current_frontier.push_back(root);
-    }
-    std::vector<size_t> bfs_level(g.last_vertex() - g.first_vertex(),
-                                  unreachable);
 
     auto frontier = [&]() -> std::unique_ptr<Frontier> {
       switch (exchange_type) {
@@ -430,28 +470,14 @@ auto main(int argc, char *argv[]) -> int {
               FrontierRegularExchange{kamping::comm_world()});
       }
     }();
-    size_t level = 0;
-    while (!comm.allreduce_single(kamping::send_buf(current_frontier.empty()),
-                                  kamping::op(std::logical_and<>{}))) {
-      SPDLOG_DEBUG("frontier={}", current_frontier);
-      for (auto v : current_frontier) {
-        SPDLOG_DEBUG("visiting {}", v);
-        KASSERT(g.is_local(v));
-        if (bfs_level[v - g.first_vertex()] != unreachable) {
-          continue;
-        }
-        bfs_level[v - g.first_vertex()] = level;
-        for (auto u : g.neighbors(v)) {
-          int rank = g.home_rank(u);
-          SPDLOG_DEBUG("adding {} to frontier of {}", u, rank);
-          frontier->add_vertex(u, rank);
-        }
-      }
-      current_frontier = frontier->exchange();
-      level++;
-      SPDLOG_DEBUG("level={}", level);
+    const auto bfs_levels = execute_bfs(frontier, comm, g, root);
+    const bool is_same = (bfs_levels == reference_bfs_levels);
+    if (!comm.allreduce_single(
+            kamping::send_buf(is_same),
+            kamping::op(kamping::ops::logical_and<bool>{}))) {
+      std::cout << "wrong result" << std::endl;
+      std::abort();
     }
-    kamping::measurements::timer().stop_and_append();
   }
 
   std::unique_ptr<std::ostream> output_stream;
