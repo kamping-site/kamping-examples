@@ -491,8 +491,12 @@ auto main(int argc, char *argv[]) -> int {
   if (kamping::comm_world().is_root()) {
     *output_stream << "{\n";
   }
-  auto max_bfs_level = *std::ranges::max_element(reference_bfs_levels);
+  auto reached_levels = reference_bfs_levels | std::views::filter([](auto l) { return l != unreachable; });
+  auto it = std::ranges::max_element(reached_levels);
+  size_t max_bfs_level = it == reached_levels.end() ? 0 : *it;
   comm.allreduce(kamping::send_recv_buf(max_bfs_level), kamping::op(kamping::ops::max<> {}));
+  size_t num_local_neighboring_ranks = g.get_comm_partners().size();
+  std::vector<size_t> num_neighboring_ranks = comm.gather(kamping::send_buf(num_local_neighboring_ranks));
   kamping::measurements::timer().aggregate_and_print(
       kamping::measurements::SimpleJsonPrinter<>{*output_stream});
   if (kamping::comm_world().is_root()) {
@@ -522,7 +526,15 @@ auto main(int argc, char *argv[]) -> int {
                    << "\",\n";
     *output_stream << "  \"seed\": " << seed << ",\n";
     *output_stream << "  \"iterations\": " << iterations << ",\n";
-    *output_stream << "  \"bfs_levels\": " << max_bfs_level << "\n";
+    *output_stream << "  \"bfs_levels\": " << max_bfs_level << ",\n";
+    *output_stream << "  \"num_neighboring_ranks\": [";
+    for (size_t i = 0; i < num_neighboring_ranks.size(); i++) {
+      *output_stream << num_neighboring_ranks[i];
+      if (i != num_neighboring_ranks.size() - 1) {
+        *output_stream << ", ";
+      }
+    }
+    *output_stream << "]\n";
     *output_stream << "}\n";
     *output_stream << "}";
   }
