@@ -14,12 +14,12 @@
 #include <random>
 #include <vector>
 
-#include "detail/common.hpp"
-#include "detail/kamping.hpp"
-#include "detail/mpi.hpp"
-#include "detail/mpi_new.hpp"
-#include "detail/mpl.hpp"
-#include "detail/rwth.hpp"
+#include "sorting/common.hpp"
+#include "sorting/kamping.hpp"
+#include "sorting/mpi.hpp"
+#include "sorting/mpi_new.hpp"
+#include "sorting/mpl.hpp"
+#include "sorting/rwth.hpp"
 
 template <typename T>
 bool globally_sorted(MPI_Comm comm, std::vector<T> const &data,
