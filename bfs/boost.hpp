@@ -28,6 +28,7 @@ class BFSFrontier final : public graph::BFSFrontier {
     }
     _data.clear();
     std::vector<int> recv_counts(_comm.size());
+    std::cout << "here boost: " << std::endl;
     boost::mpi::all_to_all(_comm, send_counts, recv_counts);
     std::vector<int> send_displs(_comm.size());
     std::vector<int> recv_displs(_comm.size());

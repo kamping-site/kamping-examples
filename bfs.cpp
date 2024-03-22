@@ -83,7 +83,7 @@ std::vector<size_t> dispatch_bfs_algorithm(
     }
 #endif
     default:
-    throw std::runtime_error("unsupported algorithm");
+      throw std::runtime_error("unsupported algorithm");
   };
 }
 
