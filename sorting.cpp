@@ -1,5 +1,5 @@
 #if defined(KAMPING_EXAMPLES_USE_BOOST)
-#include "detail/boost.hpp"
+#include "sorting/boost.hpp"
 #endif
 #include <mpi.h>
 

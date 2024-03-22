@@ -1,3 +1,7 @@
+#if defined(KAMPING_EXAMPLES_USE_BOOST)
+#include "bfs/boost.hpp"
+#endif
+
 #include <spdlog/fmt/ranges.h>
 #include <spdlog/pattern_formatter.h>
 #include <spdlog/spdlog.h>
@@ -16,6 +20,7 @@
 #include <memory>
 #include <ranges>
 
+#include "bfs/boost.hpp"
 #include "bfs/common.hpp"
 #include "bfs/kamping.hpp"
 #include "bfs/kamping_flattened.hpp"
@@ -25,7 +30,8 @@
 #include "bfs/rwth_mpi.hpp"
 
 enum class Algorithm {
-  MPI,
+  boost,
+  mpi,
   kamping,
   kamping_flattened,
   kamping_sparse,
@@ -42,7 +48,7 @@ std::vector<size_t> dispatch_bfs_algorithm(
   const graph::VertexId root = graph::generate_start_vertex(g, seed);
 
   switch (algorithm) {
-    case Algorithm::MPI: {
+    case Algorithm::mpi: {
       using Frontier = bfs_mpi::BFSFrontier;
       return bfs<Frontier>(g, root, MPI_COMM_WORLD);
     }
@@ -70,8 +76,14 @@ std::vector<size_t> dispatch_bfs_algorithm(
       using Frontier = bfs_mpl::BFSFrontier;
       return bfs<Frontier>(g, root, MPI_COMM_WORLD);
     }
+#if defined(KAMPING_EXAMPLES_USE_BOOST)
+    case Algorithm::boost: {
+      using Frontier = bfs_boost::BFSFrontier;
+      return bfs<Frontier>(g, root, MPI_COMM_WORLD);
+    }
+#endif
     default:
-      std::abort();
+    throw std::runtime_error("unsupported algorithm");
   };
 }
 
@@ -90,11 +102,12 @@ auto main(int argc, char* argv[]) -> int {
       ->required();
   size_t seed = 42;
   app.add_option("--seed", seed);
-  Algorithm algorithm = Algorithm::MPI;
+  Algorithm algorithm = Algorithm::mpi;
   app.add_option("--algorithm", algorithm, "Algorithm type")
       ->transform(
           CLI::CheckedTransformer(std::unordered_map<std::string, Algorithm>{
-              {"mpi", Algorithm::MPI},
+              {"boost", Algorithm::boost},
+              {"mpi", Algorithm::mpi},
               {"kamping", Algorithm::kamping},
               {"kamping_flattened", Algorithm::kamping_flattened},
               {"kamping_sparse", Algorithm::kamping_sparse},
@@ -107,7 +120,8 @@ auto main(int argc, char* argv[]) -> int {
   app.add_option("--json_output_path", json_output_path, "Path to JSON output");
   CLI11_PARSE(app, argc, argv);
 
-  auto bfs_levels = dispatch_bfs_algorithm(algorithm, kagen_option_string, seed);
+  auto bfs_levels =
+      dispatch_bfs_algorithm(algorithm, kagen_option_string, seed);
 
   // outputting
   auto reached_levels = bfs_levels | std::views::filter([](auto l) noexcept {

@@ -23,17 +23,11 @@ void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
     sCounts.push_back(bucket.size());
     sDispls.push_back(bucket.size() + sDispls.back());
   }
-
   std::vector<int> rCounts(comm.size());
   boost::mpi::all_to_all(comm, sCounts, rCounts);
-
-  // exclusive prefix sum of recv displacements
-  std::vector<int> rDispls(comm.size() + 1);
-  rDispls[0] = 0;
-  for (int i = 1; i <= comm.size(); i++) {
-    rDispls[i] = rCounts[i - 1] + rDispls[i - 1];
-  }
-  std::vector<T> rData(rDispls.back());  // data exchange
+  std::vector<int> rDispls(comm.size());
+  std::exclusive_scan(rCounts.begin(), rCounts.end(), rDispls.begin(), 0);
+  std::vector<T> rData(rCounts.back() + rDispls.back());  // data exchange
   // Boost.MPI does not support alltoallv
   MPI_Alltoallv(data.data(), sCounts.data(), sDispls.data(),
                 boost::mpi::get_mpi_datatype<T>(), rData.data(), rCounts.data(),
