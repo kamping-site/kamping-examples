@@ -30,56 +30,74 @@
 #include "bfs/rwth_mpi.hpp"
 
 enum class Algorithm {
-  boost,
   mpi,
   kamping,
   kamping_flattened,
   kamping_sparse,
   kamping_grid,
   rwth_mpi,
-  mpl
+  mpl,
+  boost
 };
 
-std::vector<size_t> dispatch_bfs_algorithm(
-    Algorithm algorithm, const std::string& kagen_option_string, size_t seed) {
+std::string to_string(const Algorithm& algorithm) {
+  switch (algorithm) {
+    case Algorithm::mpi:
+      return "mpi";
+    case Algorithm::kamping:
+      return "kamping";
+    case Algorithm::kamping_flattened:
+      return "kamping_flattened";
+    case Algorithm::kamping_sparse:
+      return "kamping_sparse";
+    case Algorithm::kamping_grid:
+      return "kamping_grid";
+    case Algorithm::rwth_mpi:
+      return "rwth_mpi";
+    case Algorithm::mpl:
+      return "mpl";
+    case Algorithm::boost:
+      return "boost";
+    default:
+      throw std::runtime_error("unsupported algorithm");
+  };
+}
+
+auto dispatch_bfs_algorithm(Algorithm algorithm) {
   using namespace graph;
-
-  auto g = graph::generate_distributed_graph(kagen_option_string);
-  const graph::VertexId root = graph::generate_start_vertex(g, seed);
-
   switch (algorithm) {
     case Algorithm::mpi: {
       using Frontier = bfs_mpi::BFSFrontier;
-      return bfs<Frontier>(g, root, MPI_COMM_WORLD);
+      return bfs<Frontier>;
     }
     case Algorithm::kamping: {
       using Frontier = bfs_kamping::BFSFrontier;
-      return bfs<Frontier>(g, root, MPI_COMM_WORLD);
+      return bfs<Frontier>;
     }
     case Algorithm::kamping_flattened: {
       using Frontier = bfs_kamping_flattened::BFSFrontier;
-      return bfs<Frontier>(g, root, MPI_COMM_WORLD);
+      return bfs<Frontier>;
     }
     case Algorithm::kamping_sparse: {
       using Frontier = bfs_kamping::BFSFrontier;
-      return bfs<Frontier>(g, root, MPI_COMM_WORLD);
+      return bfs<Frontier>;
     }
     case Algorithm::kamping_grid: {
       using Frontier = bfs_kamping::BFSFrontier;
-      return bfs<Frontier>(g, root, MPI_COMM_WORLD);
+      return bfs<Frontier>;
     }
     case Algorithm::rwth_mpi: {
       using Frontier = bfs_rwth_mpi::BFSFrontier;
-      return bfs<Frontier>(g, root, MPI_COMM_WORLD);
+      return bfs<Frontier>;
     }
     case Algorithm::mpl: {
       using Frontier = bfs_mpl::BFSFrontier;
-      return bfs<Frontier>(g, root, MPI_COMM_WORLD);
+      return bfs<Frontier>;
     }
 #if defined(KAMPING_EXAMPLES_USE_BOOST)
     case Algorithm::boost: {
       using Frontier = bfs_boost::BFSFrontier;
-      return bfs<Frontier>(g, root, MPI_COMM_WORLD);
+      return bfs<Frontier>;
     }
 #endif
     default:
@@ -87,7 +105,40 @@ std::vector<size_t> dispatch_bfs_algorithm(
   };
 }
 
+void log_results(std::string const& json_output_path,
+                 std::string const& algorithm, size_t max_bfs_level,
+                 size_t seed) {
+  std::unique_ptr<std::ostream> output_stream;
+  if (json_output_path == "stdout") {
+    output_stream = std::make_unique<std::ostream>(std::cout.rdbuf());
+  } else {
+    std::ofstream file_output(json_output_path);
+    output_stream = std::make_unique<std::ofstream>(std::move(file_output));
+  }
+  if (mpl::environment::comm_world().rank() == 0) {
+    *output_stream << "{\n";
+  }
+  kamping::measurements::timer().aggregate_and_print(
+      kamping::measurements::SimpleJsonPrinter<>{*output_stream});
+  if (mpl::environment::comm_world().rank() == 0) {
+    *output_stream << ",\n";
+    *output_stream << "\"info\": {\n";
+    *output_stream << "  \"algorithm\": "
+                   << "\"" << algorithm << "\",\n";
+    *output_stream << "  \"p\": " << mpl::environment::comm_world().size()
+                   << ",\n";
+    *output_stream << "  \"max_bfs_level\": " << max_bfs_level << ",\n";
+    *output_stream << "  \"seed\": " << seed << ",\n";
+    *output_stream << "}\n";
+    *output_stream << "}";
+  }
+}
+
 auto main(int argc, char* argv[]) -> int {
+  mpl::environment::comm_world();  // this perform MPI_init, MPL has no other
+                                   // way to do it and calls it implicitly when
+                                   // first accessing a communicator
+
   auto formatter = std::make_unique<spdlog::pattern_formatter>();
   formatter->add_flag<rank_formatter>('r');
   formatter->add_flag<size_formatter>('s');
@@ -95,7 +146,6 @@ auto main(int argc, char* argv[]) -> int {
   spdlog::set_formatter(std::move(formatter));
 
   spdlog::default_logger()->set_level(spdlog::level::debug);
-  kamping::Environment env;
   CLI::App app{"BFS"};
   std::string kagen_option_string;
   app.add_option("--kagen_option_string", kagen_option_string, "Kagen options")
@@ -120,8 +170,20 @@ auto main(int argc, char* argv[]) -> int {
   app.add_option("--json_output_path", json_output_path, "Path to JSON output");
   CLI11_PARSE(app, argc, argv);
 
-  auto bfs_levels =
-      dispatch_bfs_algorithm(algorithm, kagen_option_string, seed);
+  auto do_run = [&](auto&& bfs) {
+    const auto g = graph::generate_distributed_graph(kagen_option_string);
+    const graph::VertexId root = graph::generate_start_vertex(g, seed);
+    std::vector<size_t> bfs_levels;
+
+    for (size_t iteration = 0; iteration < iterations; ++iteration) {
+      kamping::measurements::timer().synchronize_and_start("total_time");
+      bfs_levels = bfs(g, root, MPI_COMM_WORLD);
+      kamping::measurements::timer().stop_and_append();
+    }
+    return bfs_levels;
+  };
+
+  auto bfs_levels = do_run(dispatch_bfs_algorithm(algorithm));
 
   // outputting
   auto reached_levels = bfs_levels | std::views::filter([](auto l) noexcept {
@@ -131,9 +193,6 @@ auto main(int argc, char* argv[]) -> int {
   size_t max_bfs_level = it == reached_levels.end() ? 0 : *it;
   kamping::comm_world().allreduce(kamping::send_recv_buf(max_bfs_level),
                                   kamping::op(kamping::ops::max<>{}));
-  if (kamping::comm_world().is_root()) {
-    std::cout << "\n";
-    std::cout << "max_bfs_level=" << max_bfs_level << std::endl;
-  }
+  log_results(json_output_path, to_string(algorithm), max_bfs_level, seed);
   return 0;
 }
