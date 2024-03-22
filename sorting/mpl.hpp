@@ -5,9 +5,10 @@
 #include "./common.hpp"
 namespace mpl {
 template <typename T>
-void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
+void sort(MPI_Comm, std::vector<T> &data, size_t seed) {
   mpl::communicator comm{mpl::environment::comm_world()};
-  const size_t oversampling_ratio = 16 * std::log2(comm.size()) + 1;
+  const size_t oversampling_ratio =
+      16 * std::log2(comm.size()) + 1;
   std::vector<T> local_samples(oversampling_ratio);
   std::sample(data.begin(), data.end(), local_samples.begin(),
               oversampling_ratio, std::mt19937{seed});
@@ -31,7 +32,7 @@ void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
   comm.alltoall(send_counts.data(), recv_counts.data());
   int recv_pos = 0;
   mpl::layouts<T> recv_layouts;
-  for (int i = 0; i < comm.size(); i++) {
+  for (size_t i = 0; i < comm.size(); i++) {
     recv_layouts.push_back(
         mpl::indexed_layout<T>({{recv_counts[i], recv_pos}}));
     recv_pos += recv_counts[i];

@@ -19,8 +19,7 @@ class BFSFrontier final : public graph::BFSFrontier {
     graph::VertexBuffer new_frontier;
     _comm.alltoallv_sparse(
         sparse_send_buf(_data), on_message([&](auto &probed_message) {
-          auto old_size = static_cast<graph::VertexBuffer::difference_type>(
-              new_frontier.size());
+          auto old_size = new_frontier.size();
           new_frontier.resize(new_frontier.size() +
                               probed_message.recv_count());
           Span message{new_frontier.begin() + old_size, new_frontier.end()};
@@ -37,4 +36,4 @@ class BFSFrontier final : public graph::BFSFrontier {
  private:
   kamping::Communicator<std::vector, plugin::SparseAlltoall> _comm;
 };
-}  // namespace kamping_sparse
+}  // namespace bfs_kamping_sparse

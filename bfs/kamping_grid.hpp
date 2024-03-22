@@ -1,8 +1,6 @@
 #pragma once
 
 #include "common.hpp"
-#include "kamping/collectives/allreduce.hpp"
-#include "kamping/collectives/alltoall.hpp"
 #include "kamping/plugin/alltoall_grid.hpp"
 #include "kamping/utils/flatten.hpp"
 

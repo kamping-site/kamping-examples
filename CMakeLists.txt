@@ -106,7 +106,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 endif()
 
 add_library(kamping_warnings INTERFACE)
-target_compile_options(kamping_warnings INTERFACE ${KAMPING_WARNING_FLAGS})
+target_compile_options(kamping_warnings INTERFACE ${KAMPING_WARNING_FLAGS} "-Wno-sign-conversion" "-Wno-conversion" "-Wno-sign-compare")
 
 if(KAMPING_EXAMPLES_USE_BOOST)
   target_link_libraries(all_mpi_wrappers INTERFACE Boost::mpi)

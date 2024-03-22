@@ -16,7 +16,7 @@ class BFSFrontier final : public graph::BFSFrontier {
     graph::VertexBuffer send_buffer;
     std::vector<int> send_counts(_comm.size());
     for (size_t rank = 0; rank < _comm.size(); rank++) {
-      auto it = _data.find(static_cast<int>(rank));
+      auto it = _data.find(rank);
       if (it == _data.end()) {
         send_counts[rank] = 0;
         continue;
@@ -24,7 +24,7 @@ class BFSFrontier final : public graph::BFSFrontier {
       auto &local_data = it->second;
       send_buffer.insert(send_buffer.end(), local_data.begin(),
                          local_data.end());
-      send_counts[rank] = static_cast<int>(local_data.size());
+      send_counts[rank] = local_data.size();
     }
     _data.clear();
     auto new_frontier = _comm.alltoallv(send_buf(send_buffer),

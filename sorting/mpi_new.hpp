@@ -10,7 +10,8 @@ void sort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
-  const size_t oversampling_ratio = 16 * std::log2(size) + 1;
+  const size_t oversampling_ratio =
+      16 * std::log2(size) + 1;
   std::vector<T> local_samples(oversampling_ratio);
   std::sample(data.begin(), data.end(), local_samples.begin(),
               oversampling_ratio, std::mt19937{seed});
@@ -21,7 +22,8 @@ void sort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
 
   pick_splitters(size - 1, oversampling_ratio, global_samples);
   auto buckets = build_buckets(data, global_samples);
-  std::vector<int> sCounts, sDispls, rCounts(size), rDispls(size);
+  std::vector<int> sCounts, sDispls, rCounts(size),
+      rDispls(size);
   int send_pos = 0;
   for (auto &bucket : buckets) {
     data.insert(data.end(), bucket.begin(), bucket.end());

@@ -17,9 +17,9 @@ class BFSFrontier final : public graph::BFSFrontier {
     MPI_Comm_rank(_comm, &rank);
     MPI_Comm_size(_comm, &size);
     graph::VertexBuffer send_buffer;
-    std::vector<int> send_counts(static_cast<size_t>(size));
-    for (size_t i = 0; i < static_cast<size_t>(size); ++i) {
-      auto it = _data.find(static_cast<int>(i));
+    std::vector<int> send_counts(size);
+    for (size_t i = 0; i < size; ++i) {
+      auto it = _data.find(i);
       if (it == _data.end()) {
         send_counts[i] = 0;
         continue;
@@ -27,14 +27,14 @@ class BFSFrontier final : public graph::BFSFrontier {
       auto &local_data = it->second;
       send_buffer.insert(send_buffer.end(), local_data.begin(),
                          local_data.end());
-      send_counts[i] = static_cast<int>(local_data.size());
+      send_counts[i] = local_data.size();
     }
     _data.clear();
-    std::vector<int> recv_counts(static_cast<size_t>(size));
+    std::vector<int> recv_counts(size);
     MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT,
                  _comm);
-    std::vector<int> send_displs(static_cast<size_t>(size));
-    std::vector<int> recv_displs(static_cast<size_t>(size));
+    std::vector<int> send_displs(size);
+    std::vector<int> recv_displs(size);
     std::exclusive_scan(send_counts.begin(), send_counts.end(),
                         send_displs.begin(), 0);
     std::exclusive_scan(recv_counts.begin(), recv_counts.end(),
@@ -58,4 +58,4 @@ class BFSFrontier final : public graph::BFSFrontier {
  private:
   MPI_Comm _comm;
 };
-}  // namespace mpi
+}  // namespace bfs_mpi

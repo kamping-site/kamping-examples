@@ -18,7 +18,8 @@ void sort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
   std::vector<T> global_samples(local_samples.size() * size);
   MPI_Allgather(local_samples.data(), local_samples.size(),
                 helper::mpi_datatype<T>(), global_samples.data(),
-                local_samples.size(), helper::mpi_datatype<T>(), comm);
+                static_cast<int>(local_samples.size()),
+                helper::mpi_datatype<T>(), comm);
   pick_splitters(size - 1, oversampling_ratio, global_samples);
   auto buckets = build_buckets(data, global_samples);
   std::vector<int> sCounts, sDispls, rCounts(size), rDispls(size + 1);
@@ -29,10 +30,9 @@ void sort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
     sDispls.push_back(bucket.size() + sDispls.back());
   }
   MPI_Alltoall(sCounts.data(), 1, MPI_INT, rCounts.data(), 1, MPI_INT, comm);
-
   // exclusive prefix sum of recv displacements
   rDispls[0] = 0;
-  for (int i = 1; i <= size; i++) {
+  for (size_t i = 1; i <= size; i++) {
     rDispls[i] = rCounts[i - 1] + rDispls[i - 1];
   }
   std::vector<T> rData(rDispls.back());  // data exchange
