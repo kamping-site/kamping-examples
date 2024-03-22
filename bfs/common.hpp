@@ -111,11 +111,42 @@ class BFSFrontier {
  public:
   void add_vertex(VertexId v, int rank) { _data[rank].push_back(v); }
   virtual std::pair<VertexBuffer, bool> exchange() = 0;
-  virtual ~BFSFrontier () noexcept(false) {};
+  virtual ~BFSFrontier() noexcept(false){};
 
  protected:
   std::unordered_map<int, std::vector<VertexId>>
       _data;  ///< map vertices of the frontier to their home rank
 };
+
+template <typename Frontier>
+std::vector<size_t> bfs(const graph::Graph &g, graph::VertexId root,
+                        MPI_Comm comm) {
+  using namespace graph;
+  Frontier distributed_frontier{comm};
+
+  graph::VertexBuffer local_frontier;
+  if (g.is_local(root)) {
+    local_frontier.push_back(root);
+  }
+  std::vector<size_t> bfs_levels(g.last_vertex() - g.first_vertex(),
+                                 unreachable_vertex);
+  size_t bfs_level = 0;
+  bool has_finished = false;
+  do {
+    for (auto v : local_frontier) {
+      if (bfs_levels[v - g.first_vertex()] != unreachable_vertex) {
+        continue;
+      }
+      bfs_levels[v - g.first_vertex()] = bfs_level;
+      for (auto u : g.neighbors(v)) {
+        int rank = g.home_rank(u);
+        distributed_frontier.add_vertex(u, rank);
+      }
+    }
+    std::tie(local_frontier, has_finished) = distributed_frontier.exchange();
+    ++bfs_level;
+  } while (!has_finished);
+  return bfs_levels;
+}
 
 }  // namespace graph

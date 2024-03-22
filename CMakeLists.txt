@@ -130,7 +130,8 @@ target_link_libraries(type_ping_pong PRIVATE kamping_warnings)
 target_compile_features(type_ping_pong PUBLIC cxx_std_20)
 
 add_executable(bfs bfs.cpp)
-target_link_libraries(bfs PUBLIC MPI::MPI_CXX kamping::kamping KaGen::KaGen
-                                 CLI11::CLI11 spdlog::spdlog)
-target_compile_features(bfs PUBLIC cxx_std_20)
+target_link_libraries(bfs PUBLIC all_mpi_wrappers)
+target_link_libraries(bfs PUBLIC CLI11::CLI11)
 target_link_libraries(bfs PRIVATE kamping_warnings)
+target_link_libraries(bfs PUBLIC KaGen::KaGen spdlog::spdlog)
+target_compile_features(bfs PUBLIC cxx_std_20)

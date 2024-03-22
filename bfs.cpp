@@ -14,7 +14,6 @@
 #include <kamping/plugin/alltoall_grid.hpp>
 #include <kamping/plugin/alltoall_sparse.hpp>
 #include <memory>
-#include <random>
 #include <ranges>
 
 #include "bfs/common.hpp"
@@ -22,6 +21,7 @@
 #include "bfs/kamping_flattened.hpp"
 #include "bfs/kamping_grid.hpp"
 #include "bfs/mpi.hpp"
+#include "bfs/mpl.hpp"
 #include "bfs/rwth_mpi.hpp"
 
 enum class Algorithm {
@@ -30,52 +30,52 @@ enum class Algorithm {
   kamping_flattened,
   kamping_sparse,
   kamping_grid,
-  rwth_mpi
+  rwth_mpi,
+  mpl
 };
-enum class ExchangeType { MPI, NoCopy, Sparse, Regular, MPINeighborhood, Grid };
 
-template <typename Frontier, typename Comm>
-auto execute_bfs(Frontier &frontier, const Comm &comm, const graph::Graph &g,
-                 graph::VertexId root) {
+std::vector<size_t> dispatch_bfs_algorithm(
+    Algorithm algorithm, const std::string& kagen_option_string, size_t seed) {
   using namespace graph;
 
-  constexpr size_t unreachable = std::numeric_limits<size_t>::max();
-  kamping::measurements::timer().synchronize_and_start("bfs");
-  std::vector<VertexId> current_frontier;
-  if (g.is_local(root)) {
-    current_frontier.push_back(root);
-  }
-  std::vector<size_t> bfs_level(g.last_vertex() - g.first_vertex(),
-                                unreachable);
-  size_t level = 0;
-  while (!comm.allreduce_single(kamping::send_buf(current_frontier.empty()),
-                                kamping::op(std::logical_and<>{}))) {
-    SPDLOG_DEBUG("frontier={}", current_frontier);
+  auto g = graph::generate_distributed_graph(kagen_option_string);
+  const graph::VertexId root = graph::generate_start_vertex(g, seed);
 
-    kamping::measurements::timer().start("local_frontier_processing");
-    for (auto v : current_frontier) {
-      SPDLOG_DEBUG("visiting {}", v);
-      KASSERT(g.is_local(v));
-      if (bfs_level[v - g.first_vertex()] != unreachable) {
-        continue;
-      }
-      bfs_level[v - g.first_vertex()] = level;
-      for (auto u : g.neighbors(v)) {
-        int rank = g.home_rank(u);
-        SPDLOG_DEBUG("adding {} to frontier of {}", u, rank);
-        frontier->add_vertex(u, rank);
-      }
+  switch (algorithm) {
+    case Algorithm::MPI: {
+      using Frontier = bfs_mpi::BFSFrontier;
+      return bfs<Frontier>(g, root, MPI_COMM_WORLD);
     }
-    kamping::measurements::timer().stop_and_append();
-    current_frontier = frontier->exchange();
-    level++;
-    SPDLOG_DEBUG("level={}", level);
-  }
-  kamping::measurements::timer().stop_and_append();
-  return bfs_level;
+    case Algorithm::kamping: {
+      using Frontier = bfs_kamping::BFSFrontier;
+      return bfs<Frontier>(g, root, MPI_COMM_WORLD);
+    }
+    case Algorithm::kamping_flattened: {
+      using Frontier = bfs_kamping_flattened::BFSFrontier;
+      return bfs<Frontier>(g, root, MPI_COMM_WORLD);
+    }
+    case Algorithm::kamping_sparse: {
+      using Frontier = bfs_kamping::BFSFrontier;
+      return bfs<Frontier>(g, root, MPI_COMM_WORLD);
+    }
+    case Algorithm::kamping_grid: {
+      using Frontier = bfs_kamping::BFSFrontier;
+      return bfs<Frontier>(g, root, MPI_COMM_WORLD);
+    }
+    case Algorithm::rwth_mpi: {
+      using Frontier = bfs_rwth_mpi::BFSFrontier;
+      return bfs<Frontier>(g, root, MPI_COMM_WORLD);
+    }
+    case Algorithm::mpl: {
+      using Frontier = bfs_mpl::BFSFrontier;
+      return bfs<Frontier>(g, root, MPI_COMM_WORLD);
+    }
+    default:
+      std::abort();
+  };
 }
 
-auto main(int argc, char *argv[]) -> int {
+auto main(int argc, char* argv[]) -> int {
   auto formatter = std::make_unique<spdlog::pattern_formatter>();
   formatter->add_flag<rank_formatter>('r');
   formatter->add_flag<size_formatter>('s');
@@ -90,7 +90,6 @@ auto main(int argc, char *argv[]) -> int {
       ->required();
   size_t seed = 42;
   app.add_option("--seed", seed);
-  ExchangeType exchange_type = ExchangeType::Regular;
   Algorithm algorithm = Algorithm::MPI;
   app.add_option("--algorithm", algorithm, "Algorithm type")
       ->transform(
@@ -100,50 +99,17 @@ auto main(int argc, char *argv[]) -> int {
               {"kamping_flattened", Algorithm::kamping_flattened},
               {"kamping_sparse", Algorithm::kamping_sparse},
               {"kamping_grid", Algorithm::kamping_sparse},
-              {"rwth_mpi", Algorithm::rwth_mpi}}));
-  app.add_option("--exchange_type", exchange_type, "Exchange type")
-      ->transform(
-          CLI::CheckedTransformer(std::unordered_map<std::string, ExchangeType>{
-              {"mpi", ExchangeType::MPI},
-              {"no_copy", ExchangeType::NoCopy},
-              {"sparse", ExchangeType::Sparse},
-              {"neighborhood", ExchangeType::MPINeighborhood},
-              {"grid", ExchangeType::Grid},
-              {"regular", ExchangeType::Regular}}));
+              {"rwth_mpi", Algorithm::rwth_mpi},
+              {"mpl", Algorithm::mpl}}));
   size_t iterations = 1;
   app.add_option("--iterations", iterations, "Number of iterations");
   std::string json_output_path = "stdout";
   app.add_option("--json_output_path", json_output_path, "Path to JSON output");
-  //
   CLI11_PARSE(app, argc, argv);
 
-  auto g = graph::generate_distributed_graph(kagen_option_string);
-  const graph::VertexId root = graph::generate_start_vertex(g, seed);
+  auto bfs_levels = dispatch_bfs_algorithm(algorithm, kagen_option_string, seed);
 
-  std::vector<size_t> bfs_levels;
-
-  switch (algorithm) {
-    case Algorithm::MPI:
-      bfs_levels = mpi::bfs(g, root, MPI_COMM_WORLD);
-      break;
-    case Algorithm::kamping:
-      bfs_levels = kamping::bfs(g, root, MPI_COMM_WORLD);
-      break;
-    case Algorithm::kamping_flattened:
-      bfs_levels = kamping_flattened::bfs(g, root, MPI_COMM_WORLD);
-      break;
-    case Algorithm::kamping_sparse:
-      bfs_levels = kamping_flattened::bfs(g, root, MPI_COMM_WORLD);
-      break;
-    case Algorithm::kamping_grid:
-      bfs_levels = kamping_flattened::bfs(g, root, MPI_COMM_WORLD);
-      break;
-    case Algorithm::rwth_mpi:
-      bfs_levels = rwth_mpi::bfs(g, root, MPI_COMM_WORLD);
-      break;
-    default:
-      std::abort();
-  };
+  // outputting
   auto reached_levels = bfs_levels | std::views::filter([](auto l) noexcept {
                           return l != graph::unreachable_vertex;
                         });
@@ -155,6 +121,5 @@ auto main(int argc, char *argv[]) -> int {
     std::cout << "\n";
     std::cout << "max_bfs_level=" << max_bfs_level << std::endl;
   }
-
   return 0;
 }
