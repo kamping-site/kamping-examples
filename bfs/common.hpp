@@ -111,7 +111,7 @@ class BFSFrontier {
  public:
   void add_vertex(VertexId v, int rank) { _data[rank].push_back(v); }
   virtual std::pair<VertexBuffer, bool> exchange() = 0;
-  virtual ~BFSFrontier(){};
+  virtual ~BFSFrontier () noexcept(false) {};
 
  protected:
   std::unordered_map<int, std::vector<VertexId>>

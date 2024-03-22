@@ -18,8 +18,20 @@
 #include <ranges>
 
 #include "bfs/common.hpp"
+#include "bfs/kamping.hpp"
+#include "bfs/kamping_flattened.hpp"
+#include "bfs/kamping_grid.hpp"
 #include "bfs/mpi.hpp"
+#include "bfs/rwth_mpi.hpp"
 
+enum class Algorithm {
+  MPI,
+  kamping,
+  kamping_flattened,
+  kamping_sparse,
+  kamping_grid,
+  rwth_mpi
+};
 enum class ExchangeType { MPI, NoCopy, Sparse, Regular, MPINeighborhood, Grid };
 
 template <typename Frontier, typename Comm>
@@ -79,6 +91,16 @@ auto main(int argc, char *argv[]) -> int {
   size_t seed = 42;
   app.add_option("--seed", seed);
   ExchangeType exchange_type = ExchangeType::Regular;
+  Algorithm algorithm = Algorithm::MPI;
+  app.add_option("--algorithm", algorithm, "Algorithm type")
+      ->transform(
+          CLI::CheckedTransformer(std::unordered_map<std::string, Algorithm>{
+              {"mpi", Algorithm::MPI},
+              {"kamping", Algorithm::kamping},
+              {"kamping_flattened", Algorithm::kamping_flattened},
+              {"kamping_sparse", Algorithm::kamping_sparse},
+              {"kamping_grid", Algorithm::kamping_sparse},
+              {"rwth_mpi", Algorithm::rwth_mpi}}));
   app.add_option("--exchange_type", exchange_type, "Exchange type")
       ->transform(
           CLI::CheckedTransformer(std::unordered_map<std::string, ExchangeType>{
@@ -100,9 +122,24 @@ auto main(int argc, char *argv[]) -> int {
 
   std::vector<size_t> bfs_levels;
 
-  switch (exchange_type) {
-    case ExchangeType::MPI:
+  switch (algorithm) {
+    case Algorithm::MPI:
       bfs_levels = mpi::bfs(g, root, MPI_COMM_WORLD);
+      break;
+    case Algorithm::kamping:
+      bfs_levels = kamping::bfs(g, root, MPI_COMM_WORLD);
+      break;
+    case Algorithm::kamping_flattened:
+      bfs_levels = kamping_flattened::bfs(g, root, MPI_COMM_WORLD);
+      break;
+    case Algorithm::kamping_sparse:
+      bfs_levels = kamping_flattened::bfs(g, root, MPI_COMM_WORLD);
+      break;
+    case Algorithm::kamping_grid:
+      bfs_levels = kamping_flattened::bfs(g, root, MPI_COMM_WORLD);
+      break;
+    case Algorithm::rwth_mpi:
+      bfs_levels = rwth_mpi::bfs(g, root, MPI_COMM_WORLD);
       break;
     default:
       std::abort();
