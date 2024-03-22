@@ -19,12 +19,15 @@
 #include <memory>
 #include <random>
 #include <ranges>
+#include <tuple>
 
 #include "../mpi_spd_formatters.hpp"
 
 namespace graph {
 
 using VertexId = kagen::SInt;
+constexpr inline size_t unreachable_vertex = std::numeric_limits<size_t>::max();
+using VertexBuffer = std::vector<VertexId>;
 
 // Distributed graph data structure.
 // Each rank is responsible ("home") for a subset of the overall vertices and
@@ -81,11 +84,33 @@ struct Graph {
   }
 };
 
+inline auto generate_distributed_graph(const std::string &kagen_option_string) {
+  kagen::KaGen kagen(MPI_COMM_WORLD);
+  kagen.UseCSRRepresentation();
+  auto graph = kagen.GenerateFromOptionString(kagen_option_string);
+  std::vector xadj = graph.TakeXadj<graph::VertexId>();
+  std::vector adjncy = graph.TakeAdjncy<graph::VertexId>();
+  auto dist = kagen::BuildVertexDistribution<graph::VertexId>(
+      graph, kamping::mpi_type_traits<graph::VertexId>::data_type(),
+      MPI_COMM_WORLD);
+  return Graph{std::move(xadj), std::move(adjncy), std::move(dist),
+               kamping::comm_world()};
+}
+
+inline VertexId generate_start_vertex(const Graph &g, size_t seed = 0) {
+  std::default_random_engine gen(seed);
+  std::uniform_int_distribution<graph::VertexId> vertex_dist(
+      0, g.global_num_vertices());
+  vertex_dist(gen);
+  vertex_dist(gen);
+  return vertex_dist(gen);
+}
+
 /// @brief Represent the frontier in a distributed breadth-first search (BFS).
 class BFSFrontier {
  public:
   void add_vertex(VertexId v, int rank) { _data[rank].push_back(v); }
-  virtual std::vector<VertexId> exchange() = 0;
+  virtual std::pair<VertexBuffer, bool> exchange() = 0;
   virtual ~BFSFrontier(){};
 
  protected:
