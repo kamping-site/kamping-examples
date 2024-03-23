@@ -20,7 +20,6 @@
 #include <memory>
 #include <ranges>
 
-#include "bfs/boost.hpp"
 #include "bfs/common.hpp"
 #include "bfs/kamping.hpp"
 #include "bfs/kamping_flattened.hpp"
