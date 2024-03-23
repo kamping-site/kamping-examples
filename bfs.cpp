@@ -23,8 +23,8 @@
 #include "bfs/common.hpp"
 #include "bfs/kamping.hpp"
 #include "bfs/kamping_flattened.hpp"
-#include "bfs/kamping_sparse.hpp"
 #include "bfs/kamping_grid.hpp"
+#include "bfs/kamping_sparse.hpp"
 #include "bfs/mpi.hpp"
 #include "bfs/mpl.hpp"
 #include "bfs/rwth_mpi.hpp"
@@ -106,7 +106,8 @@ auto dispatch_bfs_algorithm(Algorithm algorithm) {
 }
 
 void log_results(std::string const& json_output_path,
-                 std::string const& algorithm, size_t max_bfs_level,
+                 std::string const& algorithm,
+                 std::string const& kagen_option_string, size_t max_bfs_level,
                  size_t seed) {
   std::unique_ptr<std::ostream> output_stream;
   if (json_output_path == "stdout") {
@@ -125,6 +126,8 @@ void log_results(std::string const& json_output_path,
     *output_stream << "\"info\": {\n";
     *output_stream << "  \"algorithm\": "
                    << "\"" << algorithm << "\",\n";
+    *output_stream << "  \"graph\": "
+                   << "\"" << kagen_option_string << "\",\n";
     *output_stream << "  \"p\": " << mpl::environment::comm_world().size()
                    << ",\n";
     *output_stream << "  \"max_bfs_level\": " << max_bfs_level << ",\n";
@@ -193,6 +196,7 @@ auto main(int argc, char* argv[]) -> int {
   size_t max_bfs_level = it == reached_levels.end() ? 0 : *it;
   kamping::comm_world().allreduce(kamping::send_recv_buf(max_bfs_level),
                                   kamping::op(kamping::ops::max<>{}));
-  log_results(json_output_path, to_string(algorithm), max_bfs_level, seed);
+  log_results(json_output_path, to_string(algorithm), kagen_option_string,
+              max_bfs_level, seed);
   return 0;
 }

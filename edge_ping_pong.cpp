@@ -106,7 +106,7 @@ auto dispatch_bfs_algorithm(Algorithm algorithm) {
 }
 
 void log_results(std::string const& json_output_path,
-                 std::string const& algorithm, size_t seed) {
+                 std::string const& algorithm, std::string const& kagen_option_string, size_t seed) {
   std::unique_ptr<std::ostream> output_stream;
   if (json_output_path == "stdout") {
     output_stream = std::make_unique<std::ostream>(std::cout.rdbuf());
@@ -124,6 +124,8 @@ void log_results(std::string const& json_output_path,
     *output_stream << "\"info\": {\n";
     *output_stream << "  \"algorithm\": "
                    << "\"" << algorithm << "\",\n";
+    *output_stream << "  \"graph\": "
+                   << "\"" << kagen_option_string << "\",\n";
     *output_stream << "  \"p\": " << mpl::environment::comm_world().size()
                    << ",\n";
     *output_stream << "  \"seed\": " << seed << "\n";
