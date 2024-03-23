@@ -125,7 +125,7 @@ void log_results(std::string const& json_output_path,
                    << "\"" << algorithm << "\",\n";
     *output_stream << "  \"p\": " << mpl::environment::comm_world().size()
                    << ",\n";
-    *output_stream << "  \"seed\": " << seed << ",\n";
+    *output_stream << "  \"seed\": " << seed << "\n";
     *output_stream << "}\n";
     *output_stream << "}";
   }

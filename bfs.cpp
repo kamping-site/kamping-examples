@@ -127,7 +127,7 @@ void log_results(std::string const& json_output_path,
     *output_stream << "  \"p\": " << mpl::environment::comm_world().size()
                    << ",\n";
     *output_stream << "  \"max_bfs_level\": " << max_bfs_level << ",\n";
-    *output_stream << "  \"seed\": " << seed << ",\n";
+    *output_stream << "  \"seed\": " << seed << "\n";
     *output_stream << "}\n";
     *output_stream << "}";
   }
