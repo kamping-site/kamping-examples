@@ -23,6 +23,7 @@
 #include "bfs/common.hpp"
 #include "bfs/kamping.hpp"
 #include "bfs/kamping_flattened.hpp"
+#include "bfs/kamping_sparse.hpp"
 #include "bfs/kamping_grid.hpp"
 #include "bfs/mpi.hpp"
 #include "bfs/mpl.hpp"
@@ -78,11 +79,11 @@ auto dispatch_bfs_algorithm(Algorithm algorithm) {
       return bfs<Frontier>;
     }
     case Algorithm::kamping_sparse: {
-      using Frontier = bfs_kamping::BFSFrontier;
+      using Frontier = bfs_kamping_sparse::BFSFrontier;
       return bfs<Frontier>;
     }
     case Algorithm::kamping_grid: {
-      using Frontier = bfs_kamping::BFSFrontier;
+      using Frontier = bfs_kamping_grid::BFSFrontier;
       return bfs<Frontier>;
     }
     case Algorithm::rwth_mpi: {
@@ -160,7 +161,7 @@ auto main(int argc, char* argv[]) -> int {
               {"kamping", Algorithm::kamping},
               {"kamping_flattened", Algorithm::kamping_flattened},
               {"kamping_sparse", Algorithm::kamping_sparse},
-              {"kamping_grid", Algorithm::kamping_sparse},
+              {"kamping_grid", Algorithm::kamping_grid},
               {"rwth_mpi", Algorithm::rwth_mpi},
               {"mpl", Algorithm::mpl}}));
   size_t iterations = 1;

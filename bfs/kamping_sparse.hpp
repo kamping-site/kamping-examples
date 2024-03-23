@@ -25,6 +25,7 @@ class BFSFrontier final : public graph::BFSFrontier {
           Span message{new_frontier.begin() + prev_size, new_frontier.end()};
           probed_message.recv(recv_buf(message));
         }));
+    _data.clear();
     return std::make_pair(std::move(new_frontier), false);
   }
 
