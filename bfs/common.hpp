@@ -161,9 +161,9 @@ void graph_ping_pong(const graph::Graph &g, MPI_Comm comm) {
         int rank = g.home_rank(u);
         distributed_frontier.add_vertex(u, rank);
       }
-      auto result = distributed_frontier.exchange();
-      b = result.second;
     }
+    auto result = distributed_frontier.exchange();
+    b = result.second;
   }
 }
 

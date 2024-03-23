@@ -23,8 +23,8 @@
 #include "bfs/common.hpp"
 #include "bfs/kamping.hpp"
 #include "bfs/kamping_flattened.hpp"
-#include "bfs/kamping_sparse.hpp"
 #include "bfs/kamping_grid.hpp"
+#include "bfs/kamping_sparse.hpp"
 #include "bfs/mpi.hpp"
 #include "bfs/mpl.hpp"
 #include "bfs/rwth_mpi.hpp"
@@ -106,7 +106,8 @@ auto dispatch_bfs_algorithm(Algorithm algorithm) {
 }
 
 void log_results(std::string const& json_output_path,
-                 std::string const& algorithm, std::string const& kagen_option_string, size_t seed) {
+                 std::string const& algorithm,
+                 std::string const& kagen_option_string, size_t seed) {
   std::unique_ptr<std::ostream> output_stream;
   if (json_output_path == "stdout") {
     output_stream = std::make_unique<std::ostream>(std::cout.rdbuf());
@@ -180,6 +181,7 @@ auto main(int argc, char* argv[]) -> int {
   };
 
   do_run(dispatch_bfs_algorithm(algorithm));
-  log_results(json_output_path, to_string(algorithm), seed);
+  log_results(json_output_path, to_string(algorithm), kagen_option_string,
+              seed);
   return 0;
 }
