@@ -1,0 +1,38 @@
+name: edge_pingpong
+executable: edge_ping_pong
+ncores: [1, 16,32,64,512,1024,4096]
+time_limit: 3
+threads_per_rank: [1]
+graphs:
+  - generator: kagen
+    type: rmat
+    N: 12
+    M: 15
+    a: 0.57
+    b: 0.19
+    c: 0.19
+    scale_weak: TRUE
+  - generator: kagen
+    type: gnm
+    N: 12
+    M: 15
+    scale_weak: TRUE
+  - generator: kagen
+    type: rgg2d
+    N: 12
+    M: 15
+    scale_weak: TRUE
+  - generator: kagen
+    type: gnm-undirected
+    N: 12
+    M: 15
+    scale_weak: TRUE
+  - generator: kagen
+    type: rhg
+    N: 12
+    M: 15
+    gamma: 2.6
+    scale_weak: TRUE
+config:
+  - algorithm: [mpi, kamping, kamping_flattened, kamping_grid, kamping_sparse, mpl, rwth_mpi]
+    iterations: [5]
