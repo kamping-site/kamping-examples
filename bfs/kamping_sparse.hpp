@@ -8,22 +8,22 @@
 
 namespace bfs_kamping_sparse {
 using namespace kamping;
+using namespace plugin::sparse_alltoall;
 class BFSFrontier final : public graph::BFSFrontier {
  public:
   BFSFrontier(MPI_Comm comm) : _comm{comm} {}
   std::pair<graph::VertexBuffer, bool> exchange() override {
-    using namespace plugin::sparse_alltoall;
     if (is_empty()) {
       return std::make_pair(graph::VertexBuffer{}, true);
     }
     graph::VertexBuffer new_frontier;
     _comm.alltoallv_sparse(
         sparse_send_buf(_data), on_message([&](auto &probed_message) {
-          auto old_size = new_frontier.size();
+          auto prev_size = new_frontier.size();
           new_frontier.resize(new_frontier.size() +
                               probed_message.recv_count());
-          Span message{new_frontier.begin() + old_size, new_frontier.end()};
-          probed_message.recv(kamping::recv_buf(message));
+          Span message{new_frontier.begin() + prev_size, new_frontier.end()};
+          probed_message.recv(recv_buf(message));
         }));
     return std::make_pair(std::move(new_frontier), false);
   }

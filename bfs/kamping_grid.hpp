@@ -11,7 +11,6 @@ class BFSFrontier final : public graph::BFSFrontier {
   BFSFrontier(MPI_Comm comm)
       : _comm{comm}, _grid_comm{_comm.make_grid_communicator()} {}
   std::pair<graph::VertexBuffer, bool> exchange() override {
-    using namespace plugin::sparse_alltoall;
     if (is_empty()) {
       return std::make_pair(graph::VertexBuffer{}, true);
     }
@@ -32,4 +31,4 @@ class BFSFrontier final : public graph::BFSFrontier {
   kamping::Communicator<std::vector, plugin::GridCommunicator> _comm;
   plugin::grid::GridCommunicator<std::vector> _grid_comm;
 };
-}  // namespace kamping_grid
+}  // namespace bfs_kamping_grid

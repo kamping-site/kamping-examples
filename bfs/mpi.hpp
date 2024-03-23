@@ -16,35 +16,35 @@ class BFSFrontier final : public graph::BFSFrontier {
     int rank, size;
     MPI_Comm_rank(_comm, &rank);
     MPI_Comm_size(_comm, &size);
-    graph::VertexBuffer send_buffer;
-    std::vector<int> send_counts(size);
+    graph::VertexBuffer data;
+    std::vector<int> sCounts(size);
     for (size_t i = 0; i < size; ++i) {
       auto it = _data.find(i);
       if (it == _data.end()) {
-        send_counts[i] = 0;
+        sCounts[i] = 0;
         continue;
       }
       auto &local_data = it->second;
-      send_buffer.insert(send_buffer.end(), local_data.begin(),
+      data.insert(data.end(), local_data.begin(),
                          local_data.end());
-      send_counts[i] = local_data.size();
+      sCounts[i] = local_data.size();
     }
     _data.clear();
-    std::vector<int> recv_counts(size);
-    MPI_Alltoall(send_counts.data(), 1, MPI_INT, recv_counts.data(), 1, MPI_INT,
+    std::vector<int> rCounts(size);
+    MPI_Alltoall(sCounts.data(), 1, MPI_INT, rCounts.data(), 1, MPI_INT,
                  _comm);
-    std::vector<int> send_displs(size);
-    std::vector<int> recv_displs(size);
-    std::exclusive_scan(send_counts.begin(), send_counts.end(),
-                        send_displs.begin(), 0);
-    std::exclusive_scan(recv_counts.begin(), recv_counts.end(),
-                        recv_displs.begin(), 0);
+    std::vector<int> sDispls(size);
+    std::vector<int> rDispls(size);
+    std::exclusive_scan(sCounts.begin(), sCounts.end(),
+                        sDispls.begin(), 0);
+    std::exclusive_scan(rCounts.begin(), rCounts.end(),
+                        rDispls.begin(), 0);
     const size_t num_recv_elems =
-        static_cast<size_t>(recv_counts.back() + recv_displs.back());
+        static_cast<size_t>(rCounts.back() + rDispls.back());
     graph::VertexBuffer new_frontier(num_recv_elems);
-    MPI_Alltoallv(send_buffer.data(), send_counts.data(), send_displs.data(),
+    MPI_Alltoallv(data.data(), sCounts.data(), sDispls.data(),
                   helper::mpi_datatype<graph::VertexId>(), new_frontier.data(),
-                  recv_counts.data(), recv_displs.data(),
+                  rCounts.data(), rDispls.data(),
                   helper::mpi_datatype<graph::VertexId>(), _comm);
     return std::make_pair(std::move(new_frontier), false);
   }

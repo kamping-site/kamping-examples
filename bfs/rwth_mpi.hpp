@@ -12,22 +12,22 @@ class BFSFrontier final : public graph::BFSFrontier {
     if (is_empty()) {
       return std::make_pair(graph::VertexBuffer{}, true);
     }
-    graph::VertexBuffer send_buffer;
-    std::vector<int> send_counts(_comm.size());
+    graph::VertexBuffer data;
+    std::vector<int> sCounts(_comm.size());
     for (size_t rank = 0; rank < _comm.size(); rank++) {
       auto it = _data.find(rank);
       if (it == _data.end()) {
-        send_counts[rank] = 0;
+        sCounts[rank] = 0;
         continue;
       }
       auto &local_data = it->second;
-      send_buffer.insert(send_buffer.end(), local_data.begin(),
+      data.insert(data.end(), local_data.begin(),
                          local_data.end());
-      send_counts[rank] = local_data.size();
+      sCounts[rank] = local_data.size();
     }
     _data.clear();
     graph::VertexBuffer new_frontier;
-    _comm.all_to_all_varying(send_buffer, send_counts, new_frontier, true);
+    _comm.all_to_all_varying(data, sCounts, new_frontier, true);
     return std::make_pair(std::move(new_frontier), false);
   }
 

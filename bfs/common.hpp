@@ -149,4 +149,22 @@ std::vector<size_t> bfs(const graph::Graph &g, graph::VertexId root,
   return bfs_levels;
 }
 
+template <typename Frontier>
+void graph_ping_pong(const graph::Graph &g, MPI_Comm comm) {
+  using namespace graph;
+
+  Frontier distributed_frontier{comm};
+  [[maybe_unused]] volatile bool b = false;
+  for (size_t i = 0; i < 10; ++i) {
+    for (const auto &v : g.vertices()) {
+      for (const auto &u : g.neighbors(v)) {
+        int rank = g.home_rank(u);
+        distributed_frontier.add_vertex(u, rank);
+      }
+      auto result = distributed_frontier.exchange();
+      b = result.second;
+    }
+  }
+}
+
 }  // namespace graph
