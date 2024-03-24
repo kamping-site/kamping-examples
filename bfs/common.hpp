@@ -162,7 +162,10 @@ void graph_ping_pong(const graph::Graph &g, MPI_Comm comm) {
         distributed_frontier.add_vertex(u, rank);
       }
     }
+
+    kamping::measurements::timer().synchronize_and_start("alltoall");
     auto result = distributed_frontier.exchange();
+    kamping::measurements::timer().stop_and_append();
     b = result.second;
   }
 }
