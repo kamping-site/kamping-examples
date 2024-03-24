@@ -172,9 +172,16 @@ auto main(int argc, char* argv[]) -> int {
   std::string json_output_path = "stdout";
   app.add_option("--json_output_path", json_output_path, "Path to JSON output");
   CLI11_PARSE(app, argc, argv);
+  auto print_on_root = [&](const std::string& msg) {
+    if (kamping::comm_world().is_root()) {
+      std::cout << msg << std::endl;
+    }
+  };
 
   auto do_run = [&](auto&& bfs) {
+    print_on_root("start graph gen");
     const auto g = graph::generate_distributed_graph(kagen_option_string);
+    print_on_root("finished graph gen");
     const graph::VertexId root = graph::generate_start_vertex(g, seed);
     std::vector<size_t> bfs_levels;
 
@@ -183,6 +190,7 @@ auto main(int argc, char* argv[]) -> int {
       bfs_levels = bfs(g, root, MPI_COMM_WORLD);
       kamping::measurements::timer().stop_and_append();
     }
+    print_on_root("finished run");
     return bfs_levels;
   };
 
