@@ -29,6 +29,7 @@
 #include "bfs/mpi.hpp"
 #include "bfs/mpl.hpp"
 #include "bfs/rwth_mpi.hpp"
+#include "bfs/utils.hpp"
 
 enum class Algorithm {
   boost,
@@ -120,7 +121,7 @@ auto dispatch_bfs_algorithm(Algorithm algorithm) {
   };
 }
 
-void log_results(std::string const& json_output_path,
+void log_results(std::string const& json_output_path, std::size_t iterations,
                  std::string const& algorithm,
                  std::string const& kagen_option_string, size_t max_bfs_level,
                  size_t seed) {
@@ -143,6 +144,8 @@ void log_results(std::string const& json_output_path,
   if (mpl::environment::comm_world().rank() == 0) {
     *output_stream << ",\n";
     *output_stream << "\"info\": {\n";
+    *output_stream << "  \"iterations\": "
+                   << "\"" << iterations << "\",\n";
     *output_stream << "  \"algorithm\": "
                    << "\"" << algorithm << "\",\n";
     *output_stream << "  \"graph\": "
@@ -172,6 +175,8 @@ auto main(int argc, char* argv[]) -> int {
   std::string kagen_option_string;
   app.add_option("--kagen_option_string", kagen_option_string, "Kagen options")
       ->required();
+  bool permute = false;
+  app.add_flag("--permute", permute);
   size_t seed = 42;
   app.add_option("--seed", seed);
   Algorithm algorithm = Algorithm::mpi;
@@ -195,17 +200,38 @@ auto main(int argc, char* argv[]) -> int {
 
   auto do_run = [&](auto&& bfs) {
     print_on_root("start graph gen");
-    const auto g = graph::generate_distributed_graph(kagen_option_string);
-    print_on_root("finished graph gen");
-    const graph::VertexId root = graph::generate_start_vertex(g, seed);
-    std::vector<size_t> bfs_levels;
+    const auto g = [&]() {
+      auto graph = graph::generate_distributed_graph(kagen_option_string);
+      if (permute) {
+        kagen_option_string += ";permute=true";
+        return graph::permute(graph, seed);
+      } else {
+        kagen_option_string += ";permute=false";
+        return graph;
+      }
+    }();
 
+    const graph::VertexId root = [&]() {
+      graph::VertexId r = graph::generate_start_vertex(g, seed);
+      if (permute) {
+        return graph::permute_vertex(g.global_num_vertices(), seed, r);
+      } else {
+        return r;
+      }
+    }();
+
+    std::vector<size_t> bfs_levels;
     for (size_t iteration = 0; iteration < iterations; ++iteration) {
       kamping::measurements::timer().synchronize_and_start("total_time");
       bfs_levels = bfs(g, root, MPI_COMM_WORLD);
       kamping::measurements::timer().stop_and_append();
     }
     print_on_root("finished run");
+    const size_t max_num_comm_partners = kamping::comm_world().allreduce_single(
+        kamping::send_buf(g.get_comm_partners().size()),
+        kamping::op(kamping::ops::max<>{}));
+    print_on_root("max num comm partners: " +
+                  std::to_string(max_num_comm_partners));
     return bfs_levels;
   };
 
@@ -222,7 +248,7 @@ auto main(int argc, char* argv[]) -> int {
   kamping::comm_world().allreduce(kamping::send_recv_buf(max_bfs_level),
                                   kamping::op(kamping::ops::max<>{}));
   print_on_root("finished max_level computation");
-  log_results(json_output_path, to_string(algorithm), kagen_option_string,
-              max_bfs_level, seed);
+  log_results(json_output_path, iterations, to_string(algorithm),
+              kagen_option_string, max_bfs_level, seed);
   return 0;
 }

@@ -38,12 +38,19 @@ struct Edge {
 // their incident edges.
 class Graph {
  public:
+  Graph(std::vector<VertexId> &&xadj, std::vector<Edge> &&adjncy,
+        std::vector<VertexId> &&vertex_distribution,
+        kamping::Communicator<> const &comm)
+      : _rank{comm.rank()},
+        _xadj{std::move(xadj)},
+        _adjncy{std::move(adjncy)},
+        _vertex_distribution{std::move(vertex_distribution)} {}
   Graph(std::vector<VertexId> &&xadj, std::vector<VertexId> &&adjncy,
         std::vector<VertexId> &&vertex_distribution,
         kamping::Communicator<> const &comm)
-      : _xadj{std::move(xadj)},
-        _vertex_distribution{std::move(vertex_distribution)},
-        _comm{comm} {
+      : _rank{comm.rank()},
+        _xadj{std::move(xadj)},
+        _vertex_distribution{std::move(vertex_distribution)} {
     _home_rank.resize(_adjncy.size());
     auto compute_home_rank = [&](VertexId v) {
       auto rank =
@@ -63,9 +70,9 @@ class Graph {
     std::vector<VertexId>{}.swap(adjncy);  // dump content of adjncy
   }
 
-  auto vertex_begin() const { return _vertex_distribution[_comm.rank()]; }
+  auto vertex_begin() const { return _vertex_distribution[_rank]; }
 
-  auto vertex_end() const { return _vertex_distribution[_comm.rank() + 1]; }
+  auto vertex_end() const { return _vertex_distribution[_rank + 1]; }
 
   bool is_local(VertexId v) const {
     return v >= vertex_begin() && v < vertex_end();
@@ -74,6 +81,8 @@ class Graph {
   auto vertices() const {
     return std::ranges::views::iota(vertex_begin(), vertex_end());
   }
+
+  auto local_num_vertices() const { return vertex_end() - vertex_begin(); }
 
   auto global_num_vertices() const { return _vertex_distribution.back(); }
 
@@ -101,10 +110,10 @@ class Graph {
   }
 
  private:
+  size_t _rank;
   std::vector<VertexId> _xadj;
-  std::vector<std::pair<VertexId, int>> _adjncy;
+  std::vector<Edge> _adjncy;
   std::vector<VertexId> _vertex_distribution;
-  kamping::Communicator<> const &_comm;
   std::vector<int> _home_rank;
 };
 
