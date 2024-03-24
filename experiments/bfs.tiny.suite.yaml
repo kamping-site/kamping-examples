@@ -1,31 +1,31 @@
-name: bfs
+name: bfs_tiny
 executable: bfs
 ncores: [1, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384]
-time_limit: 10
+time_limit: 3 
 threads_per_rank: [1]
 graphs:
   - generator: kagen
     type: rmat
-    N: 15
-    M: 18
+    N: 10
+    M: 13
     a: 0.57
     b: 0.19
     c: 0.19
     scale_weak: TRUE
   - generator: kagen
     type: rgg2d
-    N: 15
-    M: 18
+    N: 10
+    M: 13
     scale_weak: TRUE
   - generator: kagen
     type: gnm-undirected
-    N: 15
-    M: 18
+    N: 10
+    M: 13
     scale_weak: TRUE
   - generator: kagen
     type: rhg
-    N: 15
-    M: 18
+    N: 10
+    M: 13
     gamma: 2.6
     scale_weak: TRUE
 config:
