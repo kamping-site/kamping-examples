@@ -20,6 +20,7 @@
 #include <memory>
 #include <ranges>
 
+#include "bfs/bfs_algorithm.hpp"
 #include "bfs/common.hpp"
 #include "bfs/kamping.hpp"
 #include "bfs/kamping_flattened.hpp"
@@ -30,34 +31,37 @@
 #include "bfs/rwth_mpi.hpp"
 
 enum class Algorithm {
-  mpi,
+  boost,
   kamping,
   kamping_flattened,
-  kamping_sparse,
   kamping_grid,
-  rwth_mpi,
+  kamping_sparse,
+  mpi,
+  mpi_neighborhood,
   mpl,
-  boost
+  rwth_mpi
 };
 
 std::string to_string(const Algorithm& algorithm) {
   switch (algorithm) {
-    case Algorithm::mpi:
-      return "mpi";
+    case Algorithm::boost:
+      return "boost";
     case Algorithm::kamping:
       return "kamping";
     case Algorithm::kamping_flattened:
       return "kamping_flattened";
-    case Algorithm::kamping_sparse:
-      return "kamping_sparse";
     case Algorithm::kamping_grid:
       return "kamping_grid";
-    case Algorithm::rwth_mpi:
-      return "rwth_mpi";
+    case Algorithm::kamping_sparse:
+      return "kamping_sparse";
+    case Algorithm::mpi:
+      return "mpi";
+    case Algorithm::mpi_neighborhood:
+      return "mpi_neighborhood";
     case Algorithm::mpl:
       return "mpl";
-    case Algorithm::boost:
-      return "boost";
+    case Algorithm::rwth_mpi:
+      return "rwth_mpi";
     default:
       throw std::runtime_error("unsupported algorithm");
   };
@@ -73,40 +77,44 @@ auto print_on_root = [](const std::string& msg) {
 auto dispatch_bfs_algorithm(Algorithm algorithm) {
   using namespace graph;
   switch (algorithm) {
-    case Algorithm::mpi: {
-      using Frontier = bfs_mpi::BFSFrontier;
-      return bfs<Frontier>;
-    }
-    case Algorithm::kamping: {
-      using Frontier = bfs_kamping::BFSFrontier;
-      return bfs<Frontier>;
-    }
-    case Algorithm::kamping_flattened: {
-      using Frontier = bfs_kamping_flattened::BFSFrontier;
-      return bfs<Frontier>;
-    }
-    case Algorithm::kamping_sparse: {
-      using Frontier = bfs_kamping_sparse::BFSFrontier;
-      return bfs<Frontier>;
-    }
-    case Algorithm::kamping_grid: {
-      using Frontier = bfs_kamping_grid::BFSFrontier;
-      return bfs<Frontier>;
-    }
-    case Algorithm::rwth_mpi: {
-      using Frontier = bfs_rwth_mpi::BFSFrontier;
-      return bfs<Frontier>;
-    }
-    case Algorithm::mpl: {
-      using Frontier = bfs_mpl::BFSFrontier;
-      return bfs<Frontier>;
-    }
 #if defined(KAMPING_EXAMPLES_USE_BOOST)
     case Algorithm::boost: {
       using Frontier = bfs_boost::BFSFrontier;
-      return bfs<Frontier>;
+      return bfs::bfs<Frontier>;
     }
 #endif
+    case Algorithm::kamping: {
+      using Frontier = bfs_kamping::BFSFrontier;
+      return bfs::bfs<Frontier>;
+    }
+    case Algorithm::kamping_flattened: {
+      using Frontier = bfs_kamping_flattened::BFSFrontier;
+      return bfs::bfs<Frontier>;
+    }
+    case Algorithm::kamping_grid: {
+      using Frontier = bfs_kamping_grid::BFSFrontier;
+      return bfs::bfs<Frontier>;
+    }
+    case Algorithm::kamping_sparse: {
+      using Frontier = bfs_kamping_sparse::BFSFrontier;
+      return bfs::bfs<Frontier>;
+    }
+    case Algorithm::mpi: {
+      using Frontier = bfs_mpi::BFSFrontier;
+      return bfs::bfs<Frontier>;
+    }
+    case Algorithm::mpi_neighborhood: {
+      using Frontier = bfs_mpi_neighborhood::BFSFrontier;
+      return bfs::bfs<Frontier>;
+    }
+    case Algorithm::mpl: {
+      using Frontier = bfs_mpl::BFSFrontier;
+      return bfs::bfs<Frontier>;
+    }
+    case Algorithm::rwth_mpi: {
+      using Frontier = bfs_rwth_mpi::BFSFrontier;
+      return bfs::bfs<Frontier>;
+    }
     default:
       throw std::runtime_error("unsupported algorithm");
   };
@@ -171,13 +179,14 @@ auto main(int argc, char* argv[]) -> int {
       ->transform(
           CLI::CheckedTransformer(std::unordered_map<std::string, Algorithm>{
               {"boost", Algorithm::boost},
-              {"mpi", Algorithm::mpi},
               {"kamping", Algorithm::kamping},
               {"kamping_flattened", Algorithm::kamping_flattened},
-              {"kamping_sparse", Algorithm::kamping_sparse},
               {"kamping_grid", Algorithm::kamping_grid},
-              {"rwth_mpi", Algorithm::rwth_mpi},
-              {"mpl", Algorithm::mpl}}));
+              {"kamping_sparse", Algorithm::kamping_sparse},
+              {"mpi", Algorithm::mpi},
+              {"mpi_neighborhood", Algorithm::mpi_neighborhood},
+              {"mpl", Algorithm::mpl},
+              {"rwth_mpi", Algorithm::rwth_mpi}}));
   size_t iterations = 1;
   app.add_option("--iterations", iterations, "Number of iterations");
   std::string json_output_path = "stdout";
