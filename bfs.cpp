@@ -64,6 +64,7 @@ std::string to_string(const Algorithm& algorithm) {
 }
 
 auto print_on_root = [](const std::string& msg) {
+  kamping::comm_world().barrier();
   if (kamping::comm_world().is_root()) {
     std::cout << msg << std::endl;
   }
@@ -199,14 +200,17 @@ auto main(int argc, char* argv[]) -> int {
 
   auto bfs_levels = do_run(dispatch_bfs_algorithm(algorithm));
 
+  print_on_root("start max_level computation");
   // outputting
   auto reached_levels = bfs_levels | std::views::filter([](auto l) noexcept {
                           return l != graph::unreachable_vertex;
                         });
   auto it = std::ranges::max_element(reached_levels);
   size_t max_bfs_level = it == reached_levels.end() ? 0 : *it;
+  print_on_root("mid max_level computation");
   kamping::comm_world().allreduce(kamping::send_recv_buf(max_bfs_level),
                                   kamping::op(kamping::ops::max<>{}));
+  print_on_root("finished max_level computation");
   log_results(json_output_path, to_string(algorithm), kagen_option_string,
               max_bfs_level, seed);
   return 0;
