@@ -63,6 +63,12 @@ std::string to_string(const Algorithm& algorithm) {
   };
 }
 
+auto print_on_root = [](const std::string& msg) {
+  if (kamping::comm_world().is_root()) {
+    std::cout << msg << std::endl;
+  }
+};
+
 auto dispatch_bfs_algorithm(Algorithm algorithm) {
   using namespace graph;
   switch (algorithm) {
@@ -119,8 +125,10 @@ void log_results(std::string const& json_output_path,
   if (mpl::environment::comm_world().rank() == 0) {
     *output_stream << "{\n";
   }
+  print_on_root("\nstart timer gathering");
   kamping::measurements::timer().aggregate_and_print(
       kamping::measurements::SimpleJsonPrinter<>{*output_stream});
+  print_on_root("\nfinished timer gathering");
   if (mpl::environment::comm_world().rank() == 0) {
     *output_stream << ",\n";
     *output_stream << "\"info\": {\n";
@@ -172,11 +180,6 @@ auto main(int argc, char* argv[]) -> int {
   std::string json_output_path = "stdout";
   app.add_option("--json_output_path", json_output_path, "Path to JSON output");
   CLI11_PARSE(app, argc, argv);
-  auto print_on_root = [&](const std::string& msg) {
-    if (kamping::comm_world().is_root()) {
-      std::cout << msg << std::endl;
-    }
-  };
 
   auto do_run = [&](auto&& bfs) {
     print_on_root("start graph gen");
