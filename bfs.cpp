@@ -117,13 +117,15 @@ void log_results(std::string const& json_output_path,
                  std::string const& kagen_option_string, size_t max_bfs_level,
                  size_t seed) {
   std::unique_ptr<std::ostream> output_stream;
+  print_on_root("\nstart messing with output");
   if (json_output_path == "stdout") {
     output_stream = std::make_unique<std::ostream>(std::cout.rdbuf());
   } else {
     std::ofstream file_output(json_output_path);
     output_stream = std::make_unique<std::ofstream>(std::move(file_output));
   }
-  if (mpl::environment::comm_world().rank() == 0) {
+  print_on_root("\nstop messing with output");
+  if (kamping::comm_world().rank() == 0) {
     *output_stream << "{\n";
   }
   print_on_root("\nstart timer gathering");
