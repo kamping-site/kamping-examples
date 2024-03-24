@@ -28,42 +28,59 @@ namespace graph {
 using VertexId = kagen::SInt;
 constexpr inline size_t unreachable_vertex = std::numeric_limits<size_t>::max();
 using VertexBuffer = std::vector<VertexId>;
+struct Edge {
+  VertexId u;
+  int rank;
+};
 
 // Distributed graph data structure.
 // Each rank is responsible ("home") for a subset of the overall vertices and
 // their incident edges.
-struct Graph {
-  std::vector<VertexId> xadj;
-  std::vector<VertexId> adjncy;
-  std::vector<VertexId> vertex_distribution;
-  kamping::Communicator<> const &comm;
-
-  auto first_vertex() const { return vertex_distribution[comm.rank()]; }
-
-  auto last_vertex() const { return vertex_distribution[comm.rank() + 1]; }
-
-  bool is_local(VertexId v) const {
-    return v >= first_vertex() && v < last_vertex();
+class Graph {
+ public:
+  Graph(std::vector<VertexId> &&xadj, std::vector<VertexId> &&adjncy,
+        std::vector<VertexId> &&vertex_distribution,
+        kamping::Communicator<> const &comm)
+      : _xadj{std::move(xadj)},
+        _vertex_distribution{std::move(vertex_distribution)},
+        _comm{comm} {
+    _home_rank.resize(_adjncy.size());
+    auto compute_home_rank = [&](VertexId v) {
+      auto rank =
+          std::distance(_vertex_distribution.begin(),
+                        std::upper_bound(_vertex_distribution.begin(),
+                                         _vertex_distribution.end(), v)) -
+          1;
+      return static_cast<int>(rank);
+    };
+    // compute home rank for each edge endpoint u
+    _adjncy.resize(adjncy.size());
+    for (size_t i = 0; i < adjncy.size(); ++i) {
+      auto u = adjncy[i];
+      auto rank = compute_home_rank(u);
+      _adjncy[i] = {u, rank};
+    }
+    std::vector<VertexId>{}.swap(adjncy);  // dump content of adjncy
   }
 
-  int home_rank(VertexId v) const {
-    auto rank = std::distance(vertex_distribution.begin(),
-                              std::upper_bound(vertex_distribution.begin(),
-                                               vertex_distribution.end(), v)) -
-                1;
-    return static_cast<int>(rank);
+  auto vertex_begin() const { return _vertex_distribution[_comm.rank()]; }
+
+  auto vertex_end() const { return _vertex_distribution[_comm.rank() + 1]; }
+
+  bool is_local(VertexId v) const {
+    return v >= vertex_begin() && v < vertex_end();
   }
 
   auto vertices() const {
-    return std::ranges::views::iota(first_vertex(), last_vertex());
+    return std::ranges::views::iota(vertex_begin(), vertex_end());
   }
 
-  auto global_num_vertices() const { return vertex_distribution.back(); }
+  auto global_num_vertices() const { return _vertex_distribution.back(); }
 
   auto neighbors(VertexId v) const {
-    auto begin = xadj[v - first_vertex()];
-    auto end = xadj[v - first_vertex() + 1];
-    std::span span{adjncy};
+    auto begin = _xadj[v - vertex_begin()];
+    auto end = _xadj[v - vertex_begin() + 1];
+    std::span span{_adjncy};
     span = span.subspan(begin, end - begin);
     return span;
   }
@@ -72,8 +89,8 @@ struct Graph {
     std::unordered_set<int> comm_partners_set;
     std::vector<int> comm_partners;
     for (auto v : vertices()) {
-      for (auto n : neighbors(v)) {
-        comm_partners_set.insert(home_rank(n));
+      for (auto [_, rank] : neighbors(v)) {
+        comm_partners_set.insert(rank);
       }
     }
     for (const auto &v : comm_partners_set) {
@@ -82,6 +99,13 @@ struct Graph {
     std::sort(comm_partners.begin(), comm_partners.end());
     return comm_partners;
   }
+
+ private:
+  std::vector<VertexId> _xadj;
+  std::vector<std::pair<VertexId, int>> _adjncy;
+  std::vector<VertexId> _vertex_distribution;
+  kamping::Communicator<> const &_comm;
+  std::vector<int> _home_rank;
 };
 
 inline auto generate_distributed_graph(const std::string &kagen_option_string) {
@@ -99,10 +123,9 @@ inline auto generate_distributed_graph(const std::string &kagen_option_string) {
 
 inline VertexId generate_start_vertex(const Graph &g, size_t seed = 0) {
   std::default_random_engine gen(seed);
+  gen.discard(10);  // adavance internal state
   std::uniform_int_distribution<graph::VertexId> vertex_dist(
       0, g.global_num_vertices());
-  vertex_dist(gen);
-  vertex_dist(gen);
   return vertex_dist(gen);
 }
 
@@ -128,22 +151,26 @@ std::vector<size_t> bfs(const graph::Graph &g, graph::VertexId root,
   if (g.is_local(root)) {
     local_frontier.push_back(root);
   }
-  std::vector<size_t> bfs_levels(g.last_vertex() - g.first_vertex(),
+  std::vector<size_t> bfs_levels(g.vertex_end() - g.vertex_begin(),
                                  unreachable_vertex);
   size_t bfs_level = 0;
   bool has_finished = false;
   do {
+    kamping::measurements::timer().synchronize_and_start(
+        "local_frontier_processing");
     for (auto v : local_frontier) {
-      if (bfs_levels[v - g.first_vertex()] != unreachable_vertex) {
+      if (bfs_levels[v - g.vertex_begin()] != unreachable_vertex) {
         continue;
       }
-      bfs_levels[v - g.first_vertex()] = bfs_level;
-      for (auto u : g.neighbors(v)) {
-        int rank = g.home_rank(u);
+      bfs_levels[v - g.vertex_begin()] = bfs_level;
+      for (const auto &[u, rank] : g.neighbors(v)) {
         distributed_frontier.add_vertex(u, rank);
       }
     }
+    kamping::measurements::timer().stop_and_append();
+    kamping::measurements::timer().synchronize_and_start("alltoall");
     std::tie(local_frontier, has_finished) = distributed_frontier.exchange();
+    kamping::measurements::timer().stop_and_append();
     ++bfs_level;
   } while (!has_finished);
   return bfs_levels;
@@ -157,8 +184,7 @@ void graph_ping_pong(const graph::Graph &g, MPI_Comm comm) {
   [[maybe_unused]] volatile bool b = false;
   for (size_t i = 0; i < 10; ++i) {
     for (const auto &v : g.vertices()) {
-      for (const auto &u : g.neighbors(v)) {
-        int rank = g.home_rank(u);
+      for (const auto &[u, rank] : g.neighbors(v)) {
         distributed_frontier.add_vertex(u, rank);
       }
     }
