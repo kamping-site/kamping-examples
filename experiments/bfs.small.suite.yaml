@@ -29,5 +29,5 @@ graphs:
     gamma: 2.6
     scale_weak: TRUE
 config:
-  - algorithm: [mpi, kamping, kamping_flattened, kamping_sparse, kamping_grid, mpl, rwth_mpi]
+  - algorithm: [mpi, mpi_neighborhood, kamping, kamping_flattened, kamping_sparse, kamping_grid, mpl, rwth_mpi]
     iterations: [5]
