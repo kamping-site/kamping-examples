@@ -131,11 +131,27 @@ inline auto generate_distributed_graph(const std::string &kagen_option_string) {
 }
 
 inline VertexId generate_start_vertex(const Graph &g, size_t seed = 0) {
+  using namespace kamping;
   std::default_random_engine gen(seed);
   gen.discard(10);  // adavance internal state
   std::uniform_int_distribution<graph::VertexId> vertex_dist(
       0, g.global_num_vertices());
-  return vertex_dist(gen);
+  bool is_start_vertex_isolated = true;
+  VertexId start_vertex = 0;
+  size_t fail_counter = 0;
+  do {
+    start_vertex = vertex_dist(gen);
+    if (g.is_local(start_vertex)) {
+      is_start_vertex_isolated = g.neighbors(start_vertex).empty();
+    }
+    is_start_vertex_isolated = comm_world().allreduce_single(
+        send_buf(is_start_vertex_isolated), op(ops::logical_and<>{}));
+    if (++fail_counter > 500) {
+      throw std::runtime_error(
+          "Could not determine a non isolated start vertex");
+    }
+  } while (is_start_vertex_isolated);
+  return start_vertex;
 }
 
 /// @brief Represent the frontier in a distributed breadth-first search (BFS).
