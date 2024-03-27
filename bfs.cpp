@@ -27,6 +27,8 @@
 #include "bfs/kamping_grid.hpp"
 #include "bfs/kamping_sparse.hpp"
 #include "bfs/mpi.hpp"
+#include "bfs/mpi_neighborhood.hpp"
+#include "bfs/mpi_neighborhood_dynamic.hpp"
 #include "bfs/mpl.hpp"
 #include "bfs/rwth_mpi.hpp"
 #include "bfs/utils.hpp"
@@ -39,6 +41,7 @@ enum class Algorithm {
   kamping_sparse,
   mpi,
   mpi_neighborhood,
+  mpi_neighborhood_dynamic,
   mpl,
   rwth_mpi
 };
@@ -59,6 +62,8 @@ std::string to_string(const Algorithm& algorithm) {
       return "mpi";
     case Algorithm::mpi_neighborhood:
       return "mpi_neighborhood";
+    case Algorithm::mpi_neighborhood_dynamic:
+      return "mpi_neighborhood_dynamic";
     case Algorithm::mpl:
       return "mpl";
     case Algorithm::rwth_mpi:
@@ -106,6 +111,10 @@ auto dispatch_bfs_algorithm(Algorithm algorithm) {
     }
     case Algorithm::mpi_neighborhood: {
       using Frontier = bfs_mpi_neighborhood::BFSFrontier;
+      return bfs::bfs<Frontier>;
+    }
+    case Algorithm::mpi_neighborhood_dynamic: {
+      using Frontier = bfs_mpi_neighborhood_dynamic::BFSFrontier;
       return bfs::bfs<Frontier>;
     }
     case Algorithm::mpl: {
@@ -190,6 +199,7 @@ auto main(int argc, char* argv[]) -> int {
               {"kamping_sparse", Algorithm::kamping_sparse},
               {"mpi", Algorithm::mpi},
               {"mpi_neighborhood", Algorithm::mpi_neighborhood},
+              {"mpi_neighborhood_dynamic", Algorithm::mpi_neighborhood_dynamic},
               {"mpl", Algorithm::mpl},
               {"rwth_mpi", Algorithm::rwth_mpi}}));
   size_t iterations = 1;
