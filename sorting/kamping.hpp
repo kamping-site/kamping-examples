@@ -7,7 +7,6 @@
 
 #include "./common.hpp"
 namespace kamping {
-using namespace kamping;
 template <typename T>
 void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
   using namespace kamping;

@@ -14,10 +14,6 @@ class BFSFrontier final : public graph::BFSFrontier {
         comm, static_cast<int>(_comm_partners.size()), comm_partners.data(),
         MPI_UNWEIGHTED, static_cast<int>(_comm_partners.size()),
         comm_partners.data(), MPI_UNWEIGHTED, MPI_INFO_NULL, false, &_comm);
-    // create global rank to graph communicator rank lookup table
-    for (std::size_t i = 0; i < _comm_partners.size(); ++i) {
-      _global_rank_to_graph_rank[_comm_partners[i]] = static_cast<int>(i);
-    }
   }
   std::pair<graph::VertexBuffer, bool> exchange() override {
     if (is_empty()) {
@@ -28,14 +24,14 @@ class BFSFrontier final : public graph::BFSFrontier {
     MPI_Comm_size(_comm, &size);
     graph::VertexBuffer data;
     std::vector<int> sCounts(_comm_partners.size(), 0);
-    for (size_t i = 0; i < size; ++i) {
-      auto it = _data.find(i);
+    for (size_t i = 0; i < _comm_partners.size(); ++i) {
+      auto it = _data.find(_comm_partners[i]);
       if (it == _data.end()) {
         continue;
       }
       auto& local_data = it->second;
       data.insert(data.end(), local_data.begin(), local_data.end());
-      sCounts[graph_rank(i)] = local_data.size();
+      sCounts[i] = local_data.size();
     }
     _data.clear();
     std::vector<int> rCounts(_comm_partners.size());
@@ -61,11 +57,6 @@ class BFSFrontier final : public graph::BFSFrontier {
   }
 
  private:
-  size_t graph_rank(size_t global_rank) {
-    auto it = _global_rank_to_graph_rank.find(static_cast<int>(global_rank));
-    KASSERT(it != _global_rank_to_graph_rank.end());
-    return static_cast<size_t>(it->second);
-  }
   MPI_Comm _comm;
   std::vector<int> _comm_partners;
   std::unordered_map<int, int> _global_rank_to_graph_rank;
