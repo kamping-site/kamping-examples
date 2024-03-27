@@ -32,7 +32,6 @@ struct Edge {
   VertexId u;
   int rank;
 };
-
 // Distributed graph data structure.
 // Each rank is responsible ("home") for a subset of the overall vertices and
 // their incident edges.
@@ -69,23 +68,16 @@ class Graph {
     }
     std::vector<VertexId>{}.swap(adjncy);  // dump content of adjncy
   }
-
   auto vertex_begin() const { return _vertex_distribution[_rank]; }
-
   auto vertex_end() const { return _vertex_distribution[_rank + 1]; }
-
   bool is_local(VertexId v) const {
     return v >= vertex_begin() && v < vertex_end();
   }
-
   auto vertices() const {
     return std::ranges::views::iota(vertex_begin(), vertex_end());
   }
-
   auto local_num_vertices() const { return vertex_end() - vertex_begin(); }
-
   auto global_num_vertices() const { return _vertex_distribution.back(); }
-
   auto neighbors(VertexId v) const {
     auto begin = _xadj[v - vertex_begin()];
     auto end = _xadj[v - vertex_begin() + 1];
@@ -93,7 +85,6 @@ class Graph {
     span = span.subspan(begin, end - begin);
     return span;
   }
-
   std::vector<int> get_comm_partners() const {
     std::unordered_set<int> comm_partners_set;
     std::vector<int> comm_partners;

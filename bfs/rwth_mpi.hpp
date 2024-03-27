@@ -21,8 +21,7 @@ class BFSFrontier final : public graph::BFSFrontier {
         continue;
       }
       auto &local_data = it->second;
-      data.insert(data.end(), local_data.begin(),
-                         local_data.end());
+      data.insert(data.end(), local_data.begin(), local_data.end());
       sCounts[rank] = local_data.size();
     }
     _data.clear();
@@ -30,7 +29,6 @@ class BFSFrontier final : public graph::BFSFrontier {
     _comm.all_to_all_varying(data, sCounts, new_frontier, true);
     return std::make_pair(std::move(new_frontier), false);
   }
-
   bool is_empty() const {
     bool is_empty = _data.empty();
     _comm.all_reduce(is_empty, mpi::ops::logical_and);
@@ -40,4 +38,4 @@ class BFSFrontier final : public graph::BFSFrontier {
  private:
   mpi::communicator _comm;
 };
-}  // namespace rwth_mpi
+}  // namespace bfs_rwth_mpi

@@ -25,20 +25,16 @@ class BFSFrontier final : public graph::BFSFrontier {
         continue;
       }
       auto &local_data = it->second;
-      data.insert(data.end(), local_data.begin(),
-                         local_data.end());
+      data.insert(data.end(), local_data.begin(), local_data.end());
       sCounts[i] = local_data.size();
     }
     _data.clear();
     std::vector<int> rCounts(size);
-    MPI_Alltoall(sCounts.data(), 1, MPI_INT, rCounts.data(), 1, MPI_INT,
-                 _comm);
+    MPI_Alltoall(sCounts.data(), 1, MPI_INT, rCounts.data(), 1, MPI_INT, _comm);
     std::vector<int> sDispls(size);
     std::vector<int> rDispls(size);
-    std::exclusive_scan(sCounts.begin(), sCounts.end(),
-                        sDispls.begin(), 0);
-    std::exclusive_scan(rCounts.begin(), rCounts.end(),
-                        rDispls.begin(), 0);
+    std::exclusive_scan(sCounts.begin(), sCounts.end(), sDispls.begin(), 0);
+    std::exclusive_scan(rCounts.begin(), rCounts.end(), rDispls.begin(), 0);
     const size_t num_recv_elems =
         static_cast<size_t>(rCounts.back() + rDispls.back());
     graph::VertexBuffer new_frontier(num_recv_elems);
@@ -48,7 +44,6 @@ class BFSFrontier final : public graph::BFSFrontier {
                   helper::mpi_datatype<graph::VertexId>(), _comm);
     return std::make_pair(std::move(new_frontier), false);
   }
-
   bool is_empty() const {
     bool result = _data.empty();
     MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_CXX_BOOL, MPI_LAND, _comm);

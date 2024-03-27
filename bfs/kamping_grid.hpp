@@ -21,7 +21,6 @@ class BFSFrontier final : public graph::BFSFrontier {
         });
     return std::make_pair(std::move(new_frontier), false);
   }
-
   bool is_empty() const {
     return _comm.allreduce_single(send_buf(_data.empty()),
                                   op(std::logical_and<>{}));

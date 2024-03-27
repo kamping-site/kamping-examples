@@ -6,9 +6,7 @@
 namespace bfs_mpl {
 class BFSFrontier final : public graph::BFSFrontier {
  public:
-  BFSFrontier(MPI_Comm)
-      : _comm{mpl::environment::comm_world()} {
-  }  // MPL does not offer a c'tor accepting a MPI_Comm
+  BFSFrontier(MPI_Comm) : _comm{mpl::environment::comm_world()} {}
   std::pair<graph::VertexBuffer, bool> exchange() override {
     if (is_empty()) {
       return std::make_pair(graph::VertexBuffer{}, true);
@@ -27,10 +25,9 @@ class BFSFrontier final : public graph::BFSFrontier {
       }
       auto &local_data = it->second;
       sCounts[rank] = local_data.size();
-      send_layouts.push_back(mpl::indexed_layout<graph::VertexId>(
-          {{sCounts[rank], send_displ}}));
-      data.insert(data.end(), local_data.begin(),
-                         local_data.end());
+      send_layouts.push_back(
+          mpl::indexed_layout<graph::VertexId>({{sCounts[rank], send_displ}}));
+      data.insert(data.end(), local_data.begin(), local_data.end());
       send_displ += sCounts[rank];
     }
     _data.clear();
@@ -48,7 +45,6 @@ class BFSFrontier final : public graph::BFSFrontier {
                     recv_layouts);
     return std::make_pair(std::move(new_frontier), false);
   }
-
   bool is_empty() const {
     bool result;
     _comm.allreduce(std::logical_and<>{}, _data.empty(), result);
@@ -58,4 +54,4 @@ class BFSFrontier final : public graph::BFSFrontier {
  private:
   mpl::communicator _comm;
 };
-}  // namespace mpl
+}  // namespace bfs_mpl

@@ -54,7 +54,6 @@ class BFSFrontier final : public graph::BFSFrontier {
                            helper::mpi_datatype<graph::VertexId>(), _comm);
     return std::make_pair(std::move(new_frontier), false);
   }
-
   bool is_empty() const {
     bool result = _data.empty();
     MPI_Allreduce(MPI_IN_PLACE, &result, 1, MPI_CXX_BOOL, MPI_LAND, _comm);
@@ -67,8 +66,6 @@ class BFSFrontier final : public graph::BFSFrontier {
     KASSERT(it != _global_rank_to_graph_rank.end());
     return static_cast<size_t>(it->second);
   }
-
- private:
   MPI_Comm _comm;
   std::vector<int> _comm_partners;
   std::unordered_map<int, int> _global_rank_to_graph_rank;
