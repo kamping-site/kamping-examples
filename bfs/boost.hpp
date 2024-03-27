@@ -5,7 +5,6 @@
 #include "./common.hpp"
 
 namespace bfs_boost {
-using namespace kamping;
 class BFSFrontier final : public graph::BFSFrontier {
  public:
   BFSFrontier(MPI_Comm comm) : _comm{comm, boost::mpi::comm_attach} {}

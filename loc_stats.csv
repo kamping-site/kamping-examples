@@ -1,0 +1,10 @@
+benchmark, wrapper          , start, end, blanklines, comments
+bfs      , boost            , 9    , 52, 1, 1
+bfs      , kamping          , 9    , 40, 1, 0
+bfs      , kamping_flattened, 9    , 32, 1, 0
+bfs      , kamping_grid     , 8    , 33, 1, 0
+bfs      , kamping_sparse   , 10,  , 39, 1, 0
+bfs      , mpi              , 9    , 56, 1, 0
+bfs      , mpi_neighborhood , 9,   , 72, 1, 0
+bfs      , mpl              , 7    , 56, 1, 0
+bfs      , rwth_mpi         , 8,   , 41, 1, 0
