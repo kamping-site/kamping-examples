@@ -134,7 +134,7 @@ void print_permutation_on_root(const Permutation& permutation, std::size_t n) {
 }
 
 inline VertexId permute_vertex(size_t num_global_vertices, size_t seed,
-                           VertexId vertex) {
+                               VertexId vertex) {
   auto permutation = construct_vertex_permutation(num_global_vertices, seed);
   return permutation.f(vertex);
 }

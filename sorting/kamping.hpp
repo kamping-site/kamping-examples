@@ -1,8 +1,8 @@
 #pragma once
 #include <kamping/collectives/allgather.hpp>
 #include <kamping/collectives/alltoall.hpp>
-#include <kamping/utils/flatten.hpp>
 #include <kamping/communicator.hpp>
+#include <kamping/utils/flatten.hpp>
 #include <random>
 
 #include "./common.hpp"
@@ -12,8 +12,7 @@ template <typename T>
 void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
   using namespace __mping;
   Communicator<> comm(comm_);
-  const size_t oversampling_ratio =
-      16 * std::log2(comm.size()) + 1;
+  const size_t oversampling_ratio = 16 * std::log2(comm.size()) + 1;
   std::vector<T> local_samples(oversampling_ratio);
   std::sample(data.begin(), data.end(), local_samples.begin(),
               oversampling_ratio, std::mt19937{seed});
@@ -28,8 +27,7 @@ void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
 template <typename T>
 void sort_verbose(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
   kamping::Communicator comm(comm_);
-  const size_t oversampling_ratio =
-      16 * std::log2(comm.size()) + 1;
+  const size_t oversampling_ratio = 16 * std::log2(comm.size()) + 1;
   std::vector<T> local_samples(oversampling_ratio);
   std::sample(data.begin(), data.end(), local_samples.begin(),
               oversampling_ratio, std::mt19937{seed});

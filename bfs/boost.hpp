@@ -43,7 +43,6 @@ class BFSFrontier final : public graph::BFSFrontier {
                   boost::mpi::get_mpi_datatype<graph::VertexId>(), _comm);
     return std::make_pair(std::move(new_frontier), false);
   }
-
   bool is_empty() const {
     return boost::mpi::all_reduce(_comm, _data.empty(), std::logical_and<>{});
   }
