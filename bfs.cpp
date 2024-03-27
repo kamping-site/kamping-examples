@@ -220,6 +220,9 @@ auto main(int argc, char* argv[]) -> int {
       }
     }();
 
+    const std::vector<size_t> reference_bfs_levels =
+        dispatch_bfs_algorithm(Algorithm::mpi)(g, root, MPI_COMM_WORLD);
+
     std::vector<size_t> bfs_levels;
     for (size_t iteration = 0; iteration < iterations; ++iteration) {
       kamping::measurements::timer().synchronize_and_start("total_time");
@@ -232,6 +235,10 @@ auto main(int argc, char* argv[]) -> int {
         kamping::op(kamping::ops::max<>{}));
     print_on_root("max num comm partners: " +
                   std::to_string(max_num_comm_partners));
+
+    if (reference_bfs_levels != bfs_levels) {
+      std::runtime_error("bfs level computation is not correct!");
+    }
     return bfs_levels;
   };
 
