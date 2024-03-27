@@ -76,46 +76,24 @@ def read_file(directory, mpi_type):
   return df
 
 # correct result but only two iterations on 16384 cores
-directory = "/home/matthias/Promotion/data/kamping-examples/bfs_small_24_03_24/"
-df_intel1 =read_file(directory, "intel")
-directory = "/home/matthias/Promotion/data/kamping-examples/bfs_small_grid_test3_24_03_26/"
-df_intel_grid3 =read_file(directory, "intel")
+#directory = "/home/matthias/Promotion/data/kamping-examples/bfs_small_24_03_24/"
+#df_intel1 =read_file(directory, "intel")
+#directory = "/home/matthias/Promotion/data/kamping-examples/bfs_small_grid_test3_24_03_26/"
+#df_intel_grid3 =read_file(directory, "intel")
+#df = pd.concat([df_intel1, df_intel2, df_intel2_rmat, df_ompi, df_intel_permute, df_ompi_permute])
 
 directory = "/home/matthias/Promotion/data/kamping-examples/bfs_small_final_24_03_27/"
 df_final =read_file(directory, "intel")
  
 
-directory = "/home/matthias/Promotion/data/kamping-examples/bfs_small_grid_test1_24_03_26/"
-df_grid =read_file(directory, "intel")
-directory = "/home/matthias/Promotion/data/kamping-examples/bfs_small_24_03_25/"
-df_intel2 =read_file(directory, "intel")
-directory = "/home/matthias/Promotion/data/kamping-examples/bfs_small_small_rank_configs_24_03_25/"
-df_intel2_small =read_file(directory, "intel")
-directory = "/home/matthias/Promotion/data/kamping-examples/bfs_small_rmat_24_03_25/"
-df_intel2_rmat =read_file(directory, "intel")
-
-directory = "/home/matthias/Promotion/data/kamping-examples/bfs_small_rgg3d_24_03_25/"
-df_intel2_rgg3d =read_file(directory, "intel")
-
-#directory = "/home/matthias/Promotion/data/kamping-examples/bfs_small_permute_24_03_24/"
-#df_intel_permute =read_file(directory, "intel")
-directory = "/home/matthias/Promotion/data/kamping-examples/bfs_small_ompi_24_03_24/"
-df_ompi =read_file(directory, "ompi")
-#directory = "/home/matthias/Promotion/data/kamping-examples/bfs_small_permute_ompi_24_03_24/"
-#df_ompi_permute =read_file(directory, "ompi")
-#df = pd.concat([df_intel1, df_intel2, df_intel2_rmat, df_ompi, df_intel_permute, df_ompi_permute])
-#df = pd.concat([df_grid, df_intel_grid3])
-
 df = df_final
+
 df = df.query('iteration > 0 and algorithm != "kamping" and graph != "rmat_permute:false"')
 df = df.query('p >= 1')
 cols = ['graph','p','algorithm','mpi_type','iteration','total_time']
 df = df.sort_values(cols)
-df_print = df[cols]
-print(df_print.head())
-df_print.to_csv("bfs_running_times.csv", index = False)
-df_intel1 = df_intel1.query('iteration > 0 and algorithm != "kamping" and graph != "rmat_permute:false"')
-df_intel1 = df.query('p <= 512')
+df = df[cols]
+df.to_csv("bfs_running_times.csv", index = False)
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -136,70 +114,36 @@ pdf_overall.savefig(fg.figure)
 plt.yscale('log', base=10)
 fg.set(yscale="log")
 pdf_overall.savefig(fg.figure)
-fg = sns.relplot(data=df_intel1.sort_values(['graph', 'algorithm']),
-                 x='p',
-                 y='total_time',
-                 hue='algorithm',
-                 col='graph',
-                 kind='line',
-                 errorbar='sd',
-                 facet_kws={'sharey': False, 'sharex': True},
-                 marker='s')
-plt.xscale('log', base=2)
-pdf_overall.savefig(fg.figure)
-plt.yscale('log', base=10)
-fg.set(yscale="log")
-pdf_overall.savefig(fg.figure)
 
 pdf_overall.close()
 
-#fg = sns.relplot(data=df.sort_values(['graph', 'exchange_type']),
-#                 x='p',
-#                 y='create_topology',
-#                 hue='exchange_type',
-#                 col='graph',
-#                 kind='line',
-#                 marker='s')
-###fg.figure.savefig("bfs_times.pdf")
-#pdf_overall.savefig(fg.figure)
-#fg = sns.relplot(data=df.sort_values(['graph', 'exchange_type']),
-#                 x='p',
-#                 y='create_grid',
-#                 hue='exchange_type',
-#                 col='graph',
-#                 kind='line',
-#                 marker='s')
-#pdf_overall.savefig(fg.figure)
-#pdf_overall.close()
-#
-#
-#
-#def plot(key):
-#    p = 3072
-#    import seaborn as sns
-#    data = df[df.p == p]
-#    key_columns = ['p', 'exchange_type', 'graph']
-#    data = data.set_index(key_columns).sort_index()
-#    data['level'] = data[key].apply(lambda vals: list(range(len(vals))))
-#    # sns.relplot(data=df, x='p', y='total_time', hue='exchange_type', col='graph', kind='line', marker='s')
-#    data = data.explode([key, 'level'])
-#    data = data.groupby(
-#        key_columns + ['level'])[key].mean().reset_index().sort_values('level')
-#    fg = sns.relplot(data=data.sort_values(['graph', 'exchange_type']),
-#                     x='level',
-#                     y=key,
-#                     hue='exchange_type',
-#                     col='graph',
-#                     kind='line',
-#                     marker='none',
-#                     facet_kws={
-#                         'sharex': False,
-#                         'sharey': False
-#                     })
-#    return fg.figure
-#    #fg.figure.savefig(f"time_per_level_{key}_p{p}.pdf")
-#
-#
+
+def plot(key):
+    p = 3072
+    import seaborn as sns
+    data = df[df.p == p]
+    key_columns = ['p', 'exchange_type', 'graph']
+    data = data.set_index(key_columns).sort_index()
+    data['level'] = data[key].apply(lambda vals: list(range(len(vals))))
+    # sns.relplot(data=df, x='p', y='total_time', hue='exchange_type', col='graph', kind='line', marker='s')
+    data = data.explode([key, 'level'])
+    data = data.groupby(
+        key_columns + ['level'])[key].mean().reset_index().sort_values('level')
+    fg = sns.relplot(data=data.sort_values(['graph', 'exchange_type']),
+                     x='level',
+                     y=key,
+                     hue='exchange_type',
+                     col='graph',
+                     kind='line',
+                     marker='none',
+                     facet_kws={
+                         'sharex': False,
+                         'sharey': False
+                     })
+    return fg.figure
+    #fg.figure.savefig(f"time_per_level_{key}_p{p}.pdf")
+
+
 def plot_iter(key, iteration):
     p = 512
     import seaborn as sns
@@ -227,10 +171,8 @@ def plot_iter(key, iteration):
     return fg.figure
 #
 #
-pdf = matplotlib.backends.backend_pdf.PdfPages("output.pdf")
-#pdf.savefig(plot("alltoall"))
-pdf.savefig(plot_iter("alltoall", 1))
-pdf.savefig(plot_iter("alltoall", 2))
-pdf.savefig(plot_iter("alltoall", 3))
-#pdf.savefig(plot("local_frontier_processing"))
-pdf.close()
+#pdf = matplotlib.backends.backend_pdf.PdfPages("output.pdf")
+#pdf.savefig(plot_iter("alltoall", 1))
+#pdf.savefig(plot_iter("alltoall", 2))
+#pdf.savefig(plot_iter("alltoall", 3))
+#pdf.close()
