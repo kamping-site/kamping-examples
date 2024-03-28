@@ -5,7 +5,8 @@
 #include <kamping/utils/flatten.hpp>
 #include <random>
 
-#include "./common.hpp"
+#include "sorting/common.hpp"
+
 namespace kamping {
 template <typename T>
 void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {

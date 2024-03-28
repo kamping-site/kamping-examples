@@ -2,7 +2,7 @@
 
 #include <boost/mpi.hpp>
 
-#include "./common.hpp"
+#include "bfs/common.hpp"
 
 namespace bfs_boost {
 class BFSFrontier final : public graph::BFSFrontier {

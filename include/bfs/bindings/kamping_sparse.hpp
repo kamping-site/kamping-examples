@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common.hpp"
+#include "bfs/common.hpp"
 #include "kamping/collectives/allreduce.hpp"
 #include "kamping/collectives/alltoall.hpp"
 #include "kamping/plugin/alltoall_sparse.hpp"

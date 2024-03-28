@@ -1,5 +1,5 @@
 #if defined(KAMPING_EXAMPLES_USE_BOOST)
-#include "sorting/boost.hpp"
+#include "sorting/bindings/boost.hpp"
 #endif
 #include <mpi.h>
 
@@ -15,11 +15,11 @@
 #include <vector>
 
 #include "sorting/common.hpp"
-#include "sorting/kamping.hpp"
-#include "sorting/mpi.hpp"
-#include "sorting/mpi_new.hpp"
-#include "sorting/mpl.hpp"
-#include "sorting/rwth.hpp"
+#include "sorting/bindings/kamping.hpp"
+#include "sorting/bindings/mpi.hpp"
+#include "sorting/bindings/mpi_new.hpp"
+#include "sorting/bindings/mpl.hpp"
+#include "sorting/bindings/rwth.hpp"
 
 template <typename T>
 bool globally_sorted(MPI_Comm comm, std::vector<T> const &data,

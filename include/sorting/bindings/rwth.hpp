@@ -4,7 +4,8 @@
 #include <mpi/all.hpp>
 #include <random>
 
-#include "./common.hpp"
+#include "sorting/common.hpp"
+
 namespace rwth {
 template <typename T>
 void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {

@@ -1,10 +1,11 @@
 #pragma once
 
-#include <mpi/all.hpp>
+#include "bfs/common.hpp"
+#include "kamping/collectives/allreduce.hpp"
+#include "kamping/collectives/alltoall.hpp"
 
-#include "common.hpp"
-
-namespace bfs_rwth_mpi {
+namespace bfs_kamping {
+using namespace kamping;
 class BFSFrontier final : public graph::BFSFrontier {
  public:
   BFSFrontier(MPI_Comm comm) : _comm{comm} {}
@@ -25,17 +26,15 @@ class BFSFrontier final : public graph::BFSFrontier {
       sCounts[rank] = local_data.size();
     }
     _data.clear();
-    graph::VertexBuffer new_frontier;
-    _comm.all_to_all_varying(data, sCounts, new_frontier, true);
+    auto new_frontier = _comm.alltoallv(send_buf(data), send_counts(sCounts));
     return std::make_pair(std::move(new_frontier), false);
   }
   bool is_empty() const {
-    bool is_empty = _data.empty();
-    _comm.all_reduce(is_empty, mpi::ops::logical_and);
-    return is_empty;
+    return _comm.allreduce_single(send_buf(_data.empty()),
+                                  op(std::logical_and<>{}));
   }
 
  private:
-  mpi::communicator _comm;
+  kamping::Communicator<> _comm;
 };
-}  // namespace bfs_rwth_mpi
+}  // namespace bfs_kamping
