@@ -1,13 +1,13 @@
+#include <mpi.h>
 #include <spdlog/pattern_formatter.h>
-
-#include <kamping/communicator.hpp>
-#include <kamping/environment.hpp>
 
 class rank_formatter : public spdlog::custom_flag_formatter {
  public:
   void format(const spdlog::details::log_msg &, const std::tm &,
               spdlog::memory_buf_t &dest) override {
-    auto rank_string = std::to_string(kamping::comm_world().rank());
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    auto rank_string = std::to_string(rank);
     dest.append(rank_string);
   }
   std::unique_ptr<custom_flag_formatter> clone() const override {
@@ -18,7 +18,9 @@ class size_formatter : public spdlog::custom_flag_formatter {
  public:
   void format(const spdlog::details::log_msg &, const std::tm &,
               spdlog::memory_buf_t &dest) override {
-    auto size_string = std::to_string(kamping::comm_world().size());
+    int size;
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    auto size_string = std::to_string(size);
     dest.append(size_string);
   }
   std::unique_ptr<custom_flag_formatter> clone() const override {

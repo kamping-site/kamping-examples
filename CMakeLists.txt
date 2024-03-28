@@ -106,7 +106,9 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 endif()
 
 add_library(kamping_warnings INTERFACE)
-target_compile_options(kamping_warnings INTERFACE ${KAMPING_WARNING_FLAGS} "-Wno-sign-conversion" "-Wno-conversion" "-Wno-sign-compare")
+target_compile_options(
+  kamping_warnings INTERFACE ${KAMPING_WARNING_FLAGS} "-Wno-sign-conversion"
+                             "-Wno-conversion" "-Wno-sign-compare")
 
 if(KAMPING_EXAMPLES_USE_BOOST)
   target_link_libraries(all_mpi_wrappers INTERFACE Boost::mpi)
@@ -122,6 +124,11 @@ target_compile_features(sorting PUBLIC cxx_std_20)
 if(KAMPING_EXAMPLES_USE_BOOST)
   target_compile_definitions(sorting PUBLIC KAMPING_EXAMPLES_USE_BOOST)
 endif()
+add_executable(vector_allgather vector_allgather.cpp)
+target_link_libraries(vector_allgather PUBLIC all_mpi_wrappers)
+target_link_libraries(vector_allgather PUBLIC kamping_warnings)
+target_link_libraries(vector_allgather PUBLIC spdlog::spdlog)
+target_compile_features(vector_allgather PUBLIC cxx_std_20)
 
 add_executable(type_ping_pong type_ping_pong.cpp)
 target_link_libraries(type_ping_pong PUBLIC MPI::MPI_CXX kamping::kamping)

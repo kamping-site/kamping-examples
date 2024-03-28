@@ -19,6 +19,7 @@
 #include <memory>
 #include <random>
 #include <ranges>
+#include <span>
 #include <tuple>
 
 #include "../mpi_spd_formatters.hpp"

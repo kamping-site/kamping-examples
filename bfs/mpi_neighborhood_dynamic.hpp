@@ -63,4 +63,4 @@ class BFSFrontier final : public graph::BFSFrontier {
   MPI_Comm _comm;
   std::vector<int> _comm_partners;
 };
-}  // namespace bfs_mpi_neighborhood
+}  // namespace bfs_mpi_neighborhood_dynamic
