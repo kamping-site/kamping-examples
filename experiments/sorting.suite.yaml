@@ -1,6 +1,6 @@
 name: sorting
 executable: sorting
-ncores: [48, 96, 192, 384, 768, 1536, 3072, 6144, 12288]
+ncores: [1, 48, 96, 192, 384, 768, 1536, 3072, 6144, 12288]
 time_limit: 10
 threads_per_rank: [1]
 graphs:
