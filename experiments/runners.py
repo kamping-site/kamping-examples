@@ -165,7 +165,7 @@ class SBatchRunner:
         raise NotImplementedError("Please implement this method.")
 
     def execute(self, experiment_suite: ExperimentSuite):
-        project = os.environ["PROJECT"]
+        project = os.environ.get("PROJECT", "PROJECT_NOT_SET")
         with open(self.output_directory / "config.json", 'w') as file:
             json.dump(experiment_suite.configs, file, indent=4)
         script_path = Path(os.path.dirname(__file__))
@@ -282,7 +282,7 @@ def get_runner(args, suite):
         runner = SharedMemoryRunner(suite.name, args.experiment_data_dir, args.output_dir,
                                     verify_results=args.verify)
         return runner
-    elif args.machine == 'supermuc':
+    elif args.machine == 'supermuc' or args.machine == 'generic-job-file':
         return MQSBatchRunner(suite.name, args.experiment_data_dir,
                                        args.machine,
                                        args.output_dir, args.job_output_dir,

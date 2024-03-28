@@ -84,9 +84,9 @@ def main():
     )
     script_path = Path(os.path.dirname(__file__))
     parser.add_argument('--sbatch-template',
-                        default=script_path / "sbatch-template.txt")
+                        default=script_path / "sbatch-templates/sbatch_template.txt")
     parser.add_argument('--command-template',
-                        default=script_path / "command-template.txt")
+                        default=script_path / "command-templates/command_template_intel.txt")
     parser.add_argument('--module-config')
 
     parser.add_argument('-l', '--list', action='store_true')
@@ -96,10 +96,10 @@ def main():
 
     parser.add_argument('-j', '--job-output-dir')
 
-    default_machine_type = os.environ.get("MACHINE", 'shared')
+    default_machine_type = os.environ.get("MACHINE", 'generic-job-file')
     parser.add_argument('-m',
                         '--machine',
-                        choices=['shared', 'supermuc', 'lichtenberg'],
+                        choices=['shared', 'supermuc', 'lichtenberg', 'generic-job-file'],
                         default=default_machine_type)
     parser.add_argument('--tasks-per-node',
                         default=os.environ.get("TASKS_PER_NODE", 48),
