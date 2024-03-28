@@ -1,5 +1,8 @@
 #pragma once
 
+#include <boost/mpi.hpp>
+#include <boost/mpi/collectives/all_gatherv.hpp>
+
 namespace boost {
 template <typename T>
 std::vector<T> get_whole_vector(std::vector<T> const& v_local, MPI_Comm comm_) {
@@ -11,4 +14,3 @@ std::vector<T> get_whole_vector(std::vector<T> const& v_local, MPI_Comm comm_) {
   return v_global;
 }
 }  // namespace boost
-

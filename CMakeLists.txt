@@ -116,6 +116,8 @@ endif()
 
 set(KAGEN_NODEPS ON CACHE BOOL "" FORCE)
 set(KAGEN_USE_XXHASH OFF CACHE BOOL "" FORCE)
+set(KAGEN_BUILD_APPS OFF CACHE BOOL "" FORCE)
+set(KAGEN_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 find_package(KaGen REQUIRED)
 
 add_executable(sorting executables/sorting.cpp)
@@ -134,6 +136,9 @@ target_link_libraries(vector_allgather PUBLIC all_mpi_wrappers)
 target_link_libraries(vector_allgather PUBLIC kamping_warnings)
 target_link_libraries(vector_allgather PUBLIC spdlog::spdlog)
 target_compile_features(vector_allgather PUBLIC cxx_std_20)
+if(KAMPING_EXAMPLES_USE_BOOST)
+  target_compile_definitions(vector_allgather PUBLIC KAMPING_EXAMPLES_USE_BOOST)
+endif()
 
 add_executable(type_ping_pong executables/type_ping_pong.cpp)
 target_link_libraries(type_ping_pong PUBLIC MPI::MPI_CXX kamping::kamping)

@@ -2,8 +2,6 @@
 #include <spdlog/fmt/ranges.h>
 #include <spdlog/spdlog.h>
 
-#include <boost/mpi.hpp>
-#include <boost/mpi/collectives/all_gatherv.hpp>
 #include <kamping/collectives/allgather.hpp>
 #include <kamping/communicator.hpp>
 #include <kamping/mpi_datatype.hpp>
@@ -14,7 +12,9 @@
 #include <vector>
 
 #include "./mpi_spd_formatters.hpp"
+#if defined(KAMPING_EXAMPLES_USE_BOOST)
 #include "vector_allgather/boost.hpp"
+#endif
 #include "vector_allgather/kamping.hpp"
 #include "vector_allgather/mpi.hpp"
 #include "vector_allgather/mpl.hpp"
@@ -41,8 +41,10 @@ int main() {
     spdlog::info("plain mpi: {}", v_global);
   }
   {
+#if defined(KAMPING_EXAMPLES_USE_BOOST)
     auto v_global = boost::get_whole_vector(v_local, MPI_COMM_WORLD);
     spdlog::info("Boost.MPI: {}", v_global);
+#endif
   }
   {
     auto v_global = mpl::get_whole_vector(v_local, MPI_COMM_WORLD);
