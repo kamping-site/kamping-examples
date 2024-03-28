@@ -73,13 +73,6 @@ std::string to_string(const Algorithm& algorithm) {
   };
 }
 
-auto print_on_root = [](const std::string& msg) {
-  kamping::comm_world().barrier();
-  if (kamping::comm_world().is_root()) {
-    std::cout << msg << std::endl;
-  }
-};
-
 auto dispatch_bfs_algorithm(Algorithm algorithm) {
   using namespace graph;
   switch (algorithm) {
@@ -135,8 +128,6 @@ void log_results(std::string const& json_output_path, std::size_t iterations,
                  std::string const& kagen_option_string, size_t max_bfs_level,
                  size_t seed) {
   std::unique_ptr<std::ostream> output_stream;
-  print_on_root("\nstart messing with output");
-  print_on_root("\nstop messing with output");
   if (kamping::comm_world().rank() == 0) {
     if (json_output_path == "stdout") {
       output_stream = std::make_unique<std::ostream>(std::cout.rdbuf());
@@ -146,10 +137,8 @@ void log_results(std::string const& json_output_path, std::size_t iterations,
     }
     *output_stream << "{\n";
   }
-  print_on_root("\nstart timer gathering");
   kamping::measurements::timer().aggregate_and_print(
       kamping::measurements::SimpleJsonPrinter<>{*output_stream});
-  print_on_root("\nfinished timer gathering");
   if (mpl::environment::comm_world().rank() == 0) {
     *output_stream << ",\n";
     *output_stream << "\"info\": {\n";
@@ -209,7 +198,6 @@ auto main(int argc, char* argv[]) -> int {
   CLI11_PARSE(app, argc, argv);
 
   auto do_run = [&](auto&& bfs) {
-    print_on_root("start graph gen");
     const auto g = [&]() {
       auto graph = graph::generate_distributed_graph(kagen_option_string);
       if (permute) {
@@ -239,12 +227,6 @@ auto main(int argc, char* argv[]) -> int {
       bfs_levels = bfs(g, root, MPI_COMM_WORLD);
       kamping::measurements::timer().stop_and_append();
     }
-    print_on_root("finished run");
-    const size_t max_num_comm_partners = kamping::comm_world().allreduce_single(
-        kamping::send_buf(g.get_comm_partners().size()),
-        kamping::op(kamping::ops::max<>{}));
-    print_on_root("max num comm partners: " +
-                  std::to_string(max_num_comm_partners));
 
     if (reference_bfs_levels != bfs_levels) {
       std::runtime_error("bfs level computation is not correct!");
@@ -254,17 +236,14 @@ auto main(int argc, char* argv[]) -> int {
 
   auto bfs_levels = do_run(dispatch_bfs_algorithm(algorithm));
 
-  print_on_root("start max_level computation");
   // outputting
   auto reached_levels = bfs_levels | std::views::filter([](auto l) noexcept {
                           return l != graph::unreachable_vertex;
                         });
   auto it = std::ranges::max_element(reached_levels);
   size_t max_bfs_level = it == reached_levels.end() ? 0 : *it;
-  print_on_root("mid max_level computation");
   kamping::comm_world().allreduce(kamping::send_recv_buf(max_bfs_level),
                                   kamping::op(kamping::ops::max<>{}));
-  print_on_root("finished max_level computation");
   log_results(json_output_path, iterations, to_string(algorithm),
               kagen_option_string, max_bfs_level, seed);
   return 0;
