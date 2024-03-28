@@ -22,7 +22,7 @@
 #include <span>
 #include <tuple>
 
-#include "../mpi_spd_formatters.hpp"
+#include "mpi_spd_formatters.hpp"
 
 namespace graph {
 

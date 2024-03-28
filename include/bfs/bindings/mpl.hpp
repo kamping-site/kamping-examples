@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common.hpp"
+#include "bfs/common.hpp"
 #include "mpl/mpl.hpp"
 
 namespace bfs_mpl {

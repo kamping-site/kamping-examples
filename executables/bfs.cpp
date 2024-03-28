@@ -1,5 +1,5 @@
 #if defined(KAMPING_EXAMPLES_USE_BOOST)
-#include "bfs/boost.hpp"
+#include "bfs/bindings/boost.hpp"
 #endif
 
 #include <spdlog/fmt/ranges.h>
@@ -22,15 +22,15 @@
 
 #include "bfs/bfs_algorithm.hpp"
 #include "bfs/common.hpp"
-#include "bfs/kamping.hpp"
-#include "bfs/kamping_flattened.hpp"
-#include "bfs/kamping_grid.hpp"
-#include "bfs/kamping_sparse.hpp"
-#include "bfs/mpi.hpp"
-#include "bfs/mpi_neighborhood.hpp"
-#include "bfs/mpi_neighborhood_dynamic.hpp"
-#include "bfs/mpl.hpp"
-#include "bfs/rwth_mpi.hpp"
+#include "bfs/bindings/kamping.hpp"
+#include "bfs/bindings/kamping_flattened.hpp"
+#include "bfs/bindings/kamping_grid.hpp"
+#include "bfs/bindings/kamping_sparse.hpp"
+#include "bfs/bindings/mpi.hpp"
+#include "bfs/bindings/mpi_neighborhood.hpp"
+#include "bfs/bindings/mpi_neighborhood_dynamic.hpp"
+#include "bfs/bindings/mpl.hpp"
+#include "bfs/bindings/rwth_mpi.hpp"
 #include "bfs/utils.hpp"
 
 enum class Algorithm {

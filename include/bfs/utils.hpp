@@ -10,7 +10,7 @@
 #include <kamping/communicator.hpp>
 #include <kamping/utils/flatten.hpp>
 
-#include "common.hpp"
+#include "bfs/common.hpp"
 
 namespace graph {
 

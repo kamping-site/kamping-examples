@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common.hpp"
+#include "bfs/common.hpp"
 #include "kamping/mpi_datatype.hpp"
 
 namespace helper = kamping;

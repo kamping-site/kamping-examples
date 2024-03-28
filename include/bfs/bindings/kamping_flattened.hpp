@@ -1,15 +1,15 @@
 #pragma once
 
-#include "common.hpp"
-#include "kamping/plugin/alltoall_grid.hpp"
+#include "bfs/common.hpp"
+#include "kamping/collectives/allreduce.hpp"
+#include "kamping/collectives/alltoall.hpp"
 #include "kamping/utils/flatten.hpp"
 
-namespace bfs_kamping_grid {
+namespace bfs_kamping_flattened {
 using namespace kamping;
 class BFSFrontier final : public graph::BFSFrontier {
  public:
-  BFSFrontier(MPI_Comm comm)
-      : _comm{comm}, _grid_comm{_comm.make_grid_communicator()} {}
+  BFSFrontier(MPI_Comm comm) : _comm{comm} {}
   std::pair<graph::VertexBuffer, bool> exchange() override {
     if (is_empty()) {
       return std::make_pair(graph::VertexBuffer{}, true);
@@ -17,7 +17,7 @@ class BFSFrontier final : public graph::BFSFrontier {
     auto new_frontier =
         with_flattened(_data, _comm.size()).call([&](auto... flattened) {
           _data.clear();
-          return _grid_comm.alltoallv(std::move(flattened)...);
+          return _comm.alltoallv(std::move(flattened)...);
         });
     return std::make_pair(std::move(new_frontier), false);
   }
@@ -27,7 +27,6 @@ class BFSFrontier final : public graph::BFSFrontier {
   }
 
  private:
-  kamping::Communicator<std::vector, plugin::GridCommunicator> _comm;
-  plugin::grid::GridCommunicator<std::vector> _grid_comm;
+  kamping::Communicator<> _comm;
 };
-}  // namespace bfs_kamping_grid
+}  // namespace bfs_kamping_flattened
