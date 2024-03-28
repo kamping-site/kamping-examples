@@ -21,7 +21,6 @@
 #include <ranges>
 
 #include "bfs/bfs_algorithm.hpp"
-#include "bfs/common.hpp"
 #include "bfs/bindings/kamping.hpp"
 #include "bfs/bindings/kamping_flattened.hpp"
 #include "bfs/bindings/kamping_grid.hpp"
@@ -31,6 +30,7 @@
 #include "bfs/bindings/mpi_neighborhood_dynamic.hpp"
 #include "bfs/bindings/mpl.hpp"
 #include "bfs/bindings/rwth_mpi.hpp"
+#include "bfs/common.hpp"
 #include "bfs/utils.hpp"
 
 enum class Algorithm {

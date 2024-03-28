@@ -1,8 +1,8 @@
 #pragma once
 
-#include "bfs/common.hpp"
 #include <mpi/all.hpp>
 
+#include "bfs/common.hpp"
 
 namespace bfs_rwth_mpi {
 class BFSFrontier final : public graph::BFSFrontier {

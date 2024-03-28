@@ -1,8 +1,8 @@
 #pragma once
 #include <random>
 
-#include "sorting/common.hpp"
 #include "kamping/mpi_datatype.hpp"
+#include "sorting/common.hpp"
 
 namespace mpi {
 namespace helper = kamping;

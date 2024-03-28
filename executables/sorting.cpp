@@ -14,12 +14,11 @@
 #include <random>
 #include <vector>
 
-#include "sorting/common.hpp"
 #include "sorting/bindings/kamping.hpp"
 #include "sorting/bindings/mpi.hpp"
-#include "sorting/bindings/mpi_new.hpp"
 #include "sorting/bindings/mpl.hpp"
 #include "sorting/bindings/rwth.hpp"
+#include "sorting/common.hpp"
 
 template <typename T>
 bool globally_sorted(MPI_Comm comm, std::vector<T> const &data,
@@ -122,8 +121,6 @@ int main(int argc, char *argv[]) {
   };
   if (algorithm == "mpi") {
     do_run(mpi::sort<element_type>);
-  } else if (algorithm == "mpi_new") {
-    do_run(mpi_new::sort<element_type>);
   } else if (algorithm == "kamping") {
     do_run(kamping::sort<element_type>);
   } else if (algorithm == "kamping_verbose") {

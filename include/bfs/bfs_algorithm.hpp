@@ -1,8 +1,8 @@
 #pragma once
 
-#include "bfs/common.hpp"
 #include "bfs/bindings/mpi_neighborhood.hpp"
 #include "bfs/bindings/mpi_neighborhood_dynamic.hpp"
+#include "bfs/common.hpp"
 
 namespace bfs {
 
