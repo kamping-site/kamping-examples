@@ -18,7 +18,6 @@ void sort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
   MPI_Allgather(local_samples.data(), local_samples.size(),
                 helper::mpi_datatype<T>(), global_samples.data(),
                 local_samples.size(), helper::mpi_datatype<T>(), comm);
-
   pick_splitters(size - 1, oversampling_ratio, global_samples);
   auto buckets = build_buckets(data, global_samples);
   std::vector<int> sCounts, sDispls, rCounts(size), rDispls(size);
@@ -30,7 +29,6 @@ void sort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
     send_pos += bucket.size();
   }
   MPI_Alltoall(sCounts.data(), 1, MPI_INT, rCounts.data(), 1, MPI_INT, comm);
-
   // exclusive prefix sum of recv displacements
   std::exclusive_scan(rCounts.begin(), rCounts.end(), rDispls.begin(), 0);
   std::vector<T> rData(rDispls.back() + rCounts.back());
@@ -40,5 +38,4 @@ void sort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
   std::sort(rData.begin(), rData.end());
   rData.swap(data);
 }
-
 }  // namespace mpi_new

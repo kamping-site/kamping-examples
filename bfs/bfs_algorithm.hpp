@@ -2,12 +2,17 @@
 
 #include "common.hpp"
 #include "mpi_neighborhood.hpp"
+#include "mpi_neighborhood_dynamic.hpp"
 
 namespace bfs {
 
 template <typename Frontier>
 Frontier construct_frontier(const graph::Graph &g, MPI_Comm comm) {
   if constexpr (std::is_same_v<Frontier, bfs_mpi_neighborhood::BFSFrontier>) {
+    return Frontier{comm, g.get_comm_partners()};
+  } else if constexpr (std::is_same_v<
+                           Frontier,
+                           bfs_mpi_neighborhood_dynamic::BFSFrontier>) {
     return Frontier{comm, g.get_comm_partners()};
   } else {
     return Frontier{comm};
