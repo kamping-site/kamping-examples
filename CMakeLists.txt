@@ -114,6 +114,8 @@ if(KAMPING_EXAMPLES_USE_BOOST)
   target_link_libraries(all_mpi_wrappers INTERFACE Boost::mpi)
 endif()
 
+set(KAGEN_NODEPS ON CACHE BOOL "" FORCE)
+set(KAGEN_USE_XXHASH OFF CACHE BOOL "" FORCE)
 find_package(KaGen REQUIRED)
 
 add_executable(sorting sorting.cpp)
