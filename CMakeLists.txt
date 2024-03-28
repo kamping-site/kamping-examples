@@ -117,6 +117,7 @@ endif()
 find_package(KaGen REQUIRED)
 
 add_executable(sorting executables/sorting.cpp)
+target_include_directories(sorting PRIVATE "${CMAKE_SOURCE_DIR}/include")
 target_link_libraries(sorting PUBLIC all_mpi_wrappers)
 target_link_libraries(sorting PUBLIC CLI11::CLI11)
 target_link_libraries(sorting PRIVATE kamping_warnings)

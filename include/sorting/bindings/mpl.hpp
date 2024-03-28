@@ -2,7 +2,8 @@
 #include <mpl/mpl.hpp>
 #include <random>
 
-#include "./common.hpp"
+#include "sorting/common.hpp"
+
 namespace mpl {
 template <typename T>
 void sort(MPI_Comm, std::vector<T> &data, size_t seed) {

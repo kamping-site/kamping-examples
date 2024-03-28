@@ -2,7 +2,8 @@
 #include <boost/mpi.hpp>
 #include <random>
 
-#include "./common.hpp"
+#include "sorting/common.hpp"
+
 namespace boost {
 template <typename T>
 void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {

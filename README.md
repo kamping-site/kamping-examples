@@ -14,9 +14,12 @@ We provide complete and executable source codes for our `allgatherv`, `sample so
 To compile this project you need:
 - A C++17-ready compiler such as `g++` version 9 or higher or `clang` version 11 or higher.
 - [OpenMPI](https://www.open-mpi.org/) or [Intel MPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/mpi-library.html#gs.pr0oht)
-- [Google Sparsehash](https://github.com/sparsehash/sparsehash)
 - (Boost)
 - CMake 3.26
+For generating job files:
+- python3
+- PyYAML (`pip install pyyaml`)
+
 
 
 ### Compiling
@@ -40,7 +43,7 @@ The frontier exchange functionality which is different for each binding/variant 
 #### Running
 For reproducing our experiments run
 ```shell
-python run-experiments.py bfs
+python ./experiments/run-experiments.py bfs \
               --machine             generic-job-file \
               --sbatch-template     ./experiments/sbatch-templates/generic_job_files.txt \
               --command-template    ./experiments/command-templates/command_template_generic.txt
