@@ -34,18 +34,28 @@ cmake --build build
 
 ### Allgatherv
 ### Sample Sort
+The main executable file is `exectuables/sorting.cpp`. The sample sort implementation for each binding can be found in `include/sorting/bindings/`.
+#### Running
+For reproducing our experiments run
+```shell
+python ./experiments/run-experiments.py sorting                                             \
+              --machine             generic-job-file                                        \
+              --sbatch-template     ./experiments/sbatch-templates/generic_job_files.txt    \
+              --command-template    ./experiments/command-templates/command_template_generic.txt
+```
+this will create a directory containing generic MPI jobfiles for all experiment configurations.
 
 ### BFS
 
 The main executable file is `exectuables/bfs.cpp`. The core BFS algorithm shared by all implementations can be found in `include/bfs/bfs_algorithm`.
-The frontier exchange functionality which is different for each binding/variant can be found in the accordingly named files in `include/bfs/bindings`.
+The frontier exchange functionality which is different for each binding/variant can be found in the accordingly named files in `include/bfs/bindings/`.
 
 #### Running
 For reproducing our experiments run
 ```shell
-python ./experiments/run-experiments.py bfs \
-              --machine             generic-job-file \
-              --sbatch-template     ./experiments/sbatch-templates/generic_job_files.txt \
+python ./experiments/run-experiments.py bfs                                                 \
+              --machine             generic-job-file                                        \
+              --sbatch-template     ./experiments/sbatch-templates/generic_job_files.txt    \
               --command-template    ./experiments/command-templates/command_template_generic.txt
 ```
 this will create a directory containing generic MPI jobfiles for all experiment configurations.
