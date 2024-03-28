@@ -1,7 +1,7 @@
 # Example Benchmarks
 
 In this repository you find source code examples accompanying our paper submission.
-We provide complete and executable source codes for our `allgatherv`, `sample sort`, and `breadth-first search (BFS)` benchmarks using:
+We provide complete and executable source codes for our `allgatherv`, `sample sort`, and `breadth-first search (BFS)` examples using:
 - Boost.MPI
 - KaMPIng
 - MPI
@@ -32,9 +32,12 @@ cmake --build build
 
 ## Example Codes/Benchmarks
 
-### Allgatherv
-### Sample Sort
+### 1 Allgatherv
+The main executable file is `exectuables/vector_allgather.cpp`. The vector allgather implementation for each binding can be found in `include/vector_allgather/`.
+
+### 2 Sample Sort
 The main executable file is `exectuables/sorting.cpp`. The sample sort implementation for each binding can be found in `include/sorting/bindings/`.
+
 #### Running
 For reproducing our experiments run
 ```shell
@@ -45,8 +48,7 @@ python ./experiments/run-experiments.py sorting                                 
 ```
 this will create a directory containing generic MPI jobfiles for all experiment configurations.
 
-### BFS
-
+### 3 BFS
 The main executable file is `exectuables/bfs.cpp`. The core BFS algorithm shared by all implementations can be found in `include/bfs/bfs_algorithm`.
 The frontier exchange functionality which is different for each binding/variant can be found in the accordingly named files in `include/bfs/bindings/`.
 
