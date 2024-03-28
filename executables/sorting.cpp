@@ -17,7 +17,7 @@
 #include "sorting/bindings/kamping.hpp"
 #include "sorting/bindings/mpi.hpp"
 #include "sorting/bindings/mpl.hpp"
-#include "sorting/bindings/rwth.hpp"
+#include "sorting/bindings/rwth_mpi.hpp"
 #include "sorting/common.hpp"
 
 template <typename T>

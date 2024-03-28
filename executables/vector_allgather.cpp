@@ -18,7 +18,7 @@
 #include "vector_allgather/kamping.hpp"
 #include "vector_allgather/mpi.hpp"
 #include "vector_allgather/mpl.hpp"
-#include "vector_allgather/rwth.hpp"
+#include "vector_allgather/rwth_mpi.hpp"
 
 std::vector<int> generate_input(size_t local_size, MPI_Comm comm) {
   int rank;
