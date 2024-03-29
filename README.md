@@ -1,6 +1,6 @@
 # Example Benchmarks
 
-In this repository you find source code examples accompanying our paper submission.
+In this repository, you find source code examples accompanying our paper submission.
 We provide complete and executable source codes for our `allgatherv`, `sample sort`, and `breadth-first search (BFS)` examples using:
 - Boost.MPI
 - KaMPIng
@@ -16,6 +16,7 @@ To compile this project you need:
 - [OpenMPI](https://www.open-mpi.org/) or [Intel MPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/mpi-library.html#gs.pr0oht)
 - (Boost)
 - CMake 3.26
+
 For generating job files:
 - python3
 - PyYAML (`pip install pyyaml`)
