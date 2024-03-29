@@ -11,6 +11,6 @@ bfs      , rwth_mpi         , 8,   , 41, 1, 0
 sort     , boost            , 7    , 38, 0, 0
 sort     , kamping          , 27   , 56, 0, 1
 sort     , kamping_flattened, 11   , 27, 0, 0
-sort     , mpi              , 8    , 41, 0, 1
+sort     , mpi              , 9    , 42, 0, 1
 sort     , mpl              , 7    , 44, 0, 0
 sort     , rwth_mpi         , 9,   , 30, 0, 0
