@@ -2,6 +2,7 @@ import pandas as pd
 from pathlib import Path
 import json
 import os
+import argparse
 
 
 def get_json_path(data, value_path):
@@ -75,20 +76,23 @@ def read_file(directory, mpi_type):
   df = df.sort_values('p')
   return df
 
-# correct result but only two iterations on 16384 cores
-#directory = "/home/matthias/Promotion/data/kamping-examples/bfs_small_24_03_24/"
-#df_intel1 =read_file(directory, "intel")
-#directory = "/home/matthias/Promotion/data/kamping-examples/bfs_small_grid_test3_24_03_26/"
-#df_intel_grid3 =read_file(directory, "intel")
-#df = pd.concat([df_intel1, df_intel2, df_intel2_rmat, df_ompi, df_intel_permute, df_ompi_permute])
+# Argument Parser 
+parser = argparse.ArgumentParser()
+parser.add_argument("--path",help = "path to base directory where the experiments are located.")
+parser.add_argument("--experiments", nargs="*", help = "name of the experiments")
+args = parser.parse_args()
 
-directory = "/home/matthias/Promotion/data/kamping-examples/bfs_small_final_24_03_27/"
-df_final =read_file(directory, "intel")
- 
 
-df = df_final
+df = []
+for exp in args.experiments:
+    experiment_path = Path(args.path) / exp
+    if not experiment_path.exists():
+        print("The experiment directory {} doesn't exist".format(experiment_path))
+        raise SystemExit(1)
+    df.append(read_file(experiment_path, "intel"))
 
-df = df.query('iteration > 0 and algorithm != "kamping" and graph != "rmat_permute:false"')
+df = pd.concat(df)
+df = df.query('iteration > 0 and algorithm != "kamping"')
 df = df.query('p >= 1')
 cols = ['graph','p','algorithm','mpi_type','iteration','total_time']
 df = df.sort_values(cols)
@@ -117,7 +121,6 @@ pdf_overall.savefig(fg.figure)
 
 pdf_overall.close()
 
-
 def plot(key):
     p = 3072
     import seaborn as sns
@@ -141,7 +144,6 @@ def plot(key):
                          'sharey': False
                      })
     return fg.figure
-    #fg.figure.savefig(f"time_per_level_{key}_p{p}.pdf")
 
 
 def plot_iter(key, iteration):
