@@ -32,6 +32,13 @@ cmake --build build
 (Note: in the anonymized version, it is quite likely that the source code in this repository will not compile out of the box)
 
 ## Example Codes/Benchmarks
+Note that the parts of the source code which counted towards the reported LOC are marked by `//> START ...` and `//> END` (excluding blank and comment lines).
+Run
+```shell
+cd evaluation
+./run_LOC_counting
+```
+to obain the reported lines of code.
 
 ### 1 Allgatherv
 The main executable file is `exectuables/vector_allgather.cpp`. The vector allgather implementation for each binding can be found in `include/vector_allgather/`.
