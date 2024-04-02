@@ -16,7 +16,7 @@ def read_file(file):
       if "//> START" in line:
           begin = idx
           split_line = line.strip().split(" ")
-          print(split_line)
+          # print(split_line)
           application = split_line[2]
           implementation = split_line[3]
       if "//> END" in line:
@@ -26,6 +26,8 @@ def read_file(file):
           comments += 1
       if not line.strip() and idx > begin:
           blank += 1
+  if end == 0 and begin == sys.maxsize:
+    return None
   assert(end > begin)
   entry = {}
   entry["begin"] = begin
@@ -42,28 +44,33 @@ def read_files(directory):
   path = Path(directory)
   df_entries = []
   for file_path in path.glob("*"):
-      with open(file_path) as file:
-          print(file_path)
-          entry = read_file(file)
+    if not file_path.is_file():
+      continue
+    with open(file_path) as file:
+        # print(file_path)
+        entry = read_file(file)
+        if entry:
           df_entries.append(entry)
   df = pd.DataFrame(df_entries)
   return df
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--paths",help = "path to base directory where the sources are located.", nargs = "*")
-args = parser.parse_args()
-dfs = []
-for path in args.paths:
-    df = read_files(path)
-    dfs.append(df)
-df = pd.concat(dfs)
+def main():
+  parser = argparse.ArgumentParser()
+  parser.add_argument("--paths",help = "path to base directory where the sources are located.", nargs = "*")
+  args = parser.parse_args()
+  dfs = []
+  for path in args.paths:
+      df = read_files(path)
+      dfs.append(df)
+  df = pd.concat(dfs)
+  if df.empty:
+    return
 
-cols = ['application','implementation','length','begin','end','comment_lines','blank_lines']
-df = df.sort_values(cols)
-df = df[cols]
-df.reset_index(inplace = True, drop = True)
-print(df)
+  cols = ['application','implementation','length','begin','end','comment_lines','blank_lines']
+  df = df.sort_values(cols)
+  df = df[cols]
+  df.reset_index(inplace = True, drop = True)
+  df.to_csv(sys.stdout, index = False)
 
-
-
-
+if __name__ == "__main__":
+  main()

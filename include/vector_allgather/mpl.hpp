@@ -1,7 +1,6 @@
 #pragma once
 
 namespace mpl {
-//> START VECTOR_ALLGATHER MPL
 template <typename T>
 std::vector<T> get_whole_vector(std::vector<T> const& v_local, MPI_Comm) {
   auto const& comm = mpl::environment::comm_world();

@@ -1,7 +1,6 @@
 #pragma once
 
 namespace kamping {
-//> START VECTOR_ALLGATHER KAMPING
 template <typename T>
 std::vector<T> get_whole_vector(std::vector<T> const& v_local, MPI_Comm comm_) {
   kamping::Communicator comm(comm_);

@@ -6,7 +6,6 @@
 #include <vector>
 
 namespace mpi {
-//> START VECTOR_ALLGATHER MPI
 template <typename T>
 std::vector<T> get_whole_vector(std::vector<T> const& v_local, MPI_Comm comm) {
   //> START VECTOR_ALLGATHER MPI
@@ -26,5 +25,4 @@ std::vector<T> get_whole_vector(std::vector<T> const& v_local, MPI_Comm comm) {
   return v_global;
   //> END
 }
-//> END
 }  // namespace mpi

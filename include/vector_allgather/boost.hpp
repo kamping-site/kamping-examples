@@ -4,7 +4,6 @@
 #include <boost/mpi/collectives/all_gatherv.hpp>
 
 namespace boost {
-//> START VECTOR_ALLGATHER BOOST
 template <typename T>
 std::vector<T> get_whole_vector(std::vector<T> const& v_local, MPI_Comm comm_) {
   boost::mpi::communicator comm{comm_, mpi::comm_attach};
