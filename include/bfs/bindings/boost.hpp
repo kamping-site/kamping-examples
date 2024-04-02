@@ -5,6 +5,7 @@
 #include "bfs/common.hpp"
 
 namespace bfs_boost {
+//> START BFS BOOST
 class BFSFrontier final : public graph::BFSFrontier {
  public:
   BFSFrontier(MPI_Comm comm) : _comm{comm, boost::mpi::comm_attach} {}
@@ -49,4 +50,5 @@ class BFSFrontier final : public graph::BFSFrontier {
  private:
   boost::mpi::communicator _comm;
 };
+//> END
 }  // namespace bfs_boost

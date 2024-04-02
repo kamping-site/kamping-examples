@@ -5,6 +5,7 @@
 #include "kamping/utils/flatten.hpp"
 
 namespace bfs_kamping_grid {
+//> START BFS KAMPING_GRID
 using namespace kamping;
 class BFSFrontier final : public graph::BFSFrontier {
  public:
@@ -30,4 +31,5 @@ class BFSFrontier final : public graph::BFSFrontier {
   kamping::Communicator<std::vector, plugin::GridCommunicator> _comm;
   plugin::grid::GridCommunicator<std::vector> _grid_comm;
 };
+//> END
 }  // namespace bfs_kamping_grid

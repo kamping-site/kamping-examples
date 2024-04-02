@@ -4,6 +4,7 @@
 #include "mpl/mpl.hpp"
 
 namespace bfs_mpl {
+//> START BFS MPL
 class BFSFrontier final : public graph::BFSFrontier {
  public:
   BFSFrontier(MPI_Comm) : _comm{mpl::environment::comm_world()} {}
@@ -54,4 +55,5 @@ class BFSFrontier final : public graph::BFSFrontier {
  private:
   mpl::communicator _comm;
 };
+//> END
 }  // namespace bfs_mpl

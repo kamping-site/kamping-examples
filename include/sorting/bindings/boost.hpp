@@ -5,6 +5,7 @@
 #include "sorting/common.hpp"
 
 namespace boost {
+//> START SORTING BOOST
 template <typename T>
 void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
   boost::mpi::communicator comm(comm_, boost::mpi::comm_attach);
@@ -36,4 +37,5 @@ void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
   std::sort(rData.begin(), rData.end());
   rData.swap(data);
 }
+//> END
 }  // namespace boost

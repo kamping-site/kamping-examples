@@ -6,6 +6,7 @@
 namespace helper = kamping;
 
 namespace bfs_mpi_neighborhood {
+//> START BFS MPI_NEIGHBORHOOD
 class BFSFrontier final : public graph::BFSFrontier {
  public:
   BFSFrontier(MPI_Comm comm, const std::vector<int>& comm_partners)
@@ -61,4 +62,5 @@ class BFSFrontier final : public graph::BFSFrontier {
   std::vector<int> _comm_partners;
   std::unordered_map<int, int> _global_rank_to_graph_rank;
 };
+//> END
 }  // namespace bfs_mpi_neighborhood

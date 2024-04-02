@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "sorting/bindings/kamping.hpp"
+#include "sorting/bindings/kamping_flattened.hpp"
 #include "sorting/bindings/mpi.hpp"
 #include "sorting/bindings/mpl.hpp"
 #include "sorting/bindings/rwth_mpi.hpp"
@@ -123,8 +124,8 @@ int main(int argc, char *argv[]) {
     do_run(mpi::sort<element_type>);
   } else if (algorithm == "kamping") {
     do_run(kamping::sort<element_type>);
-  } else if (algorithm == "kamping_verbose") {
-    do_run(kamping::sort_verbose<element_type>);
+  } else if (algorithm == "kamping_flattened") {
+    do_run(kamping_flattened::sort<element_type>);
 #if defined(KAMPING_EXAMPLES_USE_BOOST)
   } else if (algorithm == "boost") {
     do_run(boost::sort<element_type>);

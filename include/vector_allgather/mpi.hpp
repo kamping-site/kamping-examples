@@ -6,8 +6,10 @@
 #include <vector>
 
 namespace mpi {
+//> START VECTOR_ALLGATHER MPI
 template <typename T>
 std::vector<T> get_whole_vector(std::vector<T> const& v_local, MPI_Comm comm) {
+  //> START VECTOR_ALLGATHER MPI
   int size;
   int rank;
   MPI_Comm_size(comm, &size);
@@ -22,5 +24,7 @@ std::vector<T> get_whole_vector(std::vector<T> const& v_local, MPI_Comm comm) {
                  v_global.data(), rc.data(), rd.data(),
                  kamping::mpi_datatype<T>(), comm);
   return v_global;
+  //> END
 }
+//> END
 }  // namespace mpi

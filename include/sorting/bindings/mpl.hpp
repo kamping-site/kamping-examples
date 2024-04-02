@@ -5,6 +5,7 @@
 #include "sorting/common.hpp"
 
 namespace mpl {
+//> START SORTING MPL
 template <typename T>
 void sort(MPI_Comm, std::vector<T> &data, size_t seed) {
   mpl::communicator comm{mpl::environment::comm_world()};
@@ -42,4 +43,5 @@ void sort(MPI_Comm, std::vector<T> &data, size_t seed) {
   std::sort(recv_data.begin(), recv_data.end());
   recv_data.swap(data);
 }
+//> END
 }  // namespace mpl

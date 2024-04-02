@@ -7,6 +7,7 @@
 #include "kamping/utils/flatten.hpp"
 
 namespace bfs_kamping_sparse {
+//> START BFS KAMPING_SPARSE
 using namespace kamping;
 using namespace plugin::sparse_alltoall;
 class BFSFrontier final : public graph::BFSFrontier {
@@ -36,4 +37,5 @@ class BFSFrontier final : public graph::BFSFrontier {
  private:
   kamping::Communicator<std::vector, plugin::SparseAlltoall> _comm;
 };
+//> END
 }  // namespace bfs_kamping_sparse

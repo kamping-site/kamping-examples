@@ -7,6 +7,7 @@
 #include "sorting/common.hpp"
 
 namespace rwth {
+//> START SORTING RWTH_MPI
 template <typename T>
 void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
   mpi::communicator comm(comm_);
@@ -28,4 +29,5 @@ void sort(MPI_Comm comm_, std::vector<T> &data, size_t seed) {
   std::sort(rData.begin(), rData.end());
   rData.swap(data);
 }
+//> END
 }  // namespace rwth

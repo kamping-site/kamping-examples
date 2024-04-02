@@ -5,6 +5,7 @@
 #include "kamping/collectives/alltoall.hpp"
 
 namespace bfs_kamping {
+//> START BFS KAMPING
 using namespace kamping;
 class BFSFrontier final : public graph::BFSFrontier {
  public:
@@ -37,4 +38,5 @@ class BFSFrontier final : public graph::BFSFrontier {
  private:
   kamping::Communicator<> _comm;
 };
+//> END
 }  // namespace bfs_kamping

@@ -6,6 +6,7 @@
 #include "kamping/utils/flatten.hpp"
 
 namespace bfs_kamping_flattened {
+//> START BFS KAMPING_FLATTENED
 using namespace kamping;
 class BFSFrontier final : public graph::BFSFrontier {
  public:
@@ -29,4 +30,5 @@ class BFSFrontier final : public graph::BFSFrontier {
  private:
   kamping::Communicator<> _comm;
 };
+//> END
 }  // namespace bfs_kamping_flattened

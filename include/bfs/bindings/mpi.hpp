@@ -6,6 +6,7 @@
 namespace helper = kamping;
 
 namespace bfs_mpi {
+//> START BFS MPI
 class BFSFrontier final : public graph::BFSFrontier {
  public:
   BFSFrontier(MPI_Comm comm) : _comm{comm} {}
@@ -53,4 +54,5 @@ class BFSFrontier final : public graph::BFSFrontier {
  private:
   MPI_Comm _comm;
 };
+//> END
 }  // namespace bfs_mpi

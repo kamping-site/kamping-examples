@@ -5,6 +5,7 @@
 #include "bfs/common.hpp"
 
 namespace bfs_rwth_mpi {
+//> START BFS RWTH_MPI
 class BFSFrontier final : public graph::BFSFrontier {
  public:
   BFSFrontier(MPI_Comm comm) : _comm{comm} {}
@@ -38,4 +39,5 @@ class BFSFrontier final : public graph::BFSFrontier {
  private:
   mpi::communicator _comm;
 };
+//> END
 }  // namespace bfs_rwth_mpi

@@ -6,6 +6,7 @@
 
 namespace mpi {
 namespace helper = kamping;
+//> START SORTING MPI
 template <typename T>
 void sort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
   int rank, size;
@@ -39,4 +40,5 @@ void sort(MPI_Comm comm, std::vector<T> &data, size_t seed) {
   std::sort(rData.begin(), rData.end());
   rData.swap(data);
 }
+//> END
 }  // namespace mpi
