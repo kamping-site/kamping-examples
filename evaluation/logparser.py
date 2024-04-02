@@ -33,9 +33,6 @@ def read_logs_from_directory(directory, mpi_type, value_paths):
             if os.stat(file).st_size == 0:
                 continue
             output = json.load(log)
-            iterations = get_json_path(output, ["info", "iterations"])
-            assert(iterations is not None)
-            iterations = int(iterations)
             base_entry = {}
             to_expand = {}
             for name, path in value_paths.items():
@@ -44,6 +41,16 @@ def read_logs_from_directory(directory, mpi_type, value_paths):
                     base_entry[name] = value
                 else:
                     to_expand[name] = value
+            iterations = get_json_path(output, ["info", "iterations"])
+            if iterations is None:
+                # if no iterations are specified, we assume that the length of the longest list is the number of iterations
+                max_iterations = max([len(value) for value in to_expand.values()])
+                min_iterations = min([len(value) for value in to_expand.values()])
+                assert max_iterations == min_iterations
+                iterations = max_iterations
+
+            else:
+                iterations = int(iterations)
             for iteration in range(0, iterations):
                 entry = base_entry.copy()
                 entry["iteration"] = iteration
