@@ -38,7 +38,7 @@ void sort(MPI_Comm, std::vector<T> &data, size_t seed) {
         mpl::indexed_layout<T>({{recv_counts[i], recv_pos}}));
     recv_pos += recv_counts[i];
   }
-  std::vector<T> recv_data(recv_pos);  // data exchange
+  std::vector<T> recv_data(recv_pos);
   comm.alltoallv(data.data(), send_layouts, recv_data.data(), recv_layouts);
   std::sort(recv_data.begin(), recv_data.end());
   recv_data.swap(data);

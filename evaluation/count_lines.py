@@ -22,7 +22,7 @@ def read_file(file):
       if "//> END" in line:
           end = idx
           break
-      if "//" in line and idx > begin:
+      if line.strip().startswith("//") and idx > begin:
           comments += 1
       if not line.strip() and idx > begin:
           blank += 1
