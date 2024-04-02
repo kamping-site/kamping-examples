@@ -73,16 +73,16 @@ for ax in figure.axes:
 
     ax.tick_params(axis="y",direction="in", which='both', width=.1)
     ax.tick_params(axis="x",direction="out", which='both', width=.1)
-    ax.grid('both', linewidth=.1, alpha=.5)
+    ax.grid('both', linewidth=.5, alpha=.5, linestyle='dotted')
     ax.xaxis.set_major_locator(plt.LogLocator(base=2, numticks=5))
 # figure.axes[0].set_ylabel('Total time (s)')
 figure.set_size_inches(.75 * fullwidth, .7 * fullwidth)
-figure.axes[0].set_title('GNM', y=.8)
-figure.axes[1].set_title('RGG-2D', y=.8)
+figure.axes[0].set_title('GNM', y=.75)
+figure.axes[1].set_title('RGG-2D', y=.75)
 # figure.axes[2].set_title('RGG-3D')
-figure.axes[2].set_title('RHG', y=.8)
+figure.axes[2].set_title('RHG', y=.75)
 figure.supylabel('Total time (s)', x=-0.1)
-figure.supxlabel('number of processors', y=-0.05)
+figure.supxlabel('number of processors', y=-0.06)
 new_labels = [style[algo]['label'] for algo in style.keys()]
 figure.legend(handles=figure.axes[0].lines, labels=new_labels, bbox_to_anchor=(1, .1), loc='lower right', handletextpad=.5)
 

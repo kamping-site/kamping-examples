@@ -23,22 +23,22 @@ mpl.rcParams.update({
 
 style = {
     'mpi': {
-        'label': 'MPI~\cite{Forum2023}',
+        'label': r"MPI~\cite{Forum2023}",
         'color': 'tab:blue',
         'marker': 's'
     },
     'boost': {
-        'label': 'Boost.MPI~\cite{Gregor2007}',
+        'label': r"Boost.MPI~\cite{Gregor2007}",
         'color': 'tab:orange',
         'marker': 'o'
     },
     'mpl': {
-        'label': 'MPL~\cite{Bauke2015}',
+        'label': r"MPL~\cite{Bauke2015}",
         'color': 'tab:green',
         'marker': 'v'
     },
     'rwth': {
-        'label': 'RWTH-MPI~\cite{Demiralp2023}',
+        'label': r"RWTH-MPI~\cite{Demiralp2023}",
         'color': 'tab:purple',
         'marker': '<'
     },
@@ -76,9 +76,9 @@ fg.map(sns.lineplot, 'p', 'time',
        errorbar='sd')
 fig = fg.figure
 ax = fig.axes[0]
-fig.set_size_inches(.8 * fullwidth, fullwidth / 3)
-ax.set_ylabel('time (s)')
-ax.set_xlabel('\# compute nodes (48 ranks each)')
+fig.set_size_inches(.85 * fullwidth, fullwidth / 3)
+ax.set_ylabel('Total time (s)')
+ax.set_xlabel(r"number of processors")
 ax.set_xscale('log', base=2)
 xticks = df.p.unique()
 print(xticks)
@@ -92,6 +92,7 @@ fig.legend(handles=ax.lines, labels=new_labels,
 ax.tick_params(axis="y",direction="in", which='both', width=.1)
 ax.tick_params(axis="x",direction="out", which='both', width=.1)
 ax.grid('both', linewidth=.5, alpha=.5, linestyle='dotted')
+ax.annotate(r"$\times 48$", xy=(.93, .15), xycoords='figure fraction', fontsize='small')
 fig.savefig('sorting.pdf', bbox_inches='tight')
 fig.savefig('sorting.pgf', bbox_inches='tight')
 
