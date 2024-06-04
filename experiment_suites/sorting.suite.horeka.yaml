@@ -1,0 +1,14 @@
+name: sorting_horeka
+executable: sorting
+ncores: [76, 152, 304, 608, 1216, 2432, 4864, 9728]
+time_limit: 10
+threads_per_rank: [1]
+graphs:
+  - generator: dummy
+    name: random_array
+    n_local: 1000000
+config:
+  - algorithm: [mpi, boost, rwth, kamping, kamping_flattened, mpl]
+    iterations: [5]
+    check: [True]
+    warmup: [True]
