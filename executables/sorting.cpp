@@ -2,10 +2,13 @@
 #include "sorting/bindings/boost.hpp"
 #endif
 #include <mpi.h>
+#include <spdlog/fmt/ranges.h>
+#include <spdlog/spdlog.h>
 
 #include <CLI/CLI.hpp>
 #include <algorithm>
 #include <iostream>
+#include <kamping/collectives/allreduce.hpp>
 #include <kamping/collectives/gather.hpp>
 #include <kamping/communicator.hpp>
 #include <kamping/measurements/printer.hpp>
@@ -14,6 +17,7 @@
 #include <random>
 #include <vector>
 
+#include "./mpi_spd_formatters.hpp"
 #include "sorting/bindings/kamping.hpp"
 #include "sorting/bindings/kamping_flattened.hpp"
 #include "sorting/bindings/mpi.hpp"
@@ -23,15 +27,40 @@
 
 template <typename T>
 bool globally_sorted(MPI_Comm comm, std::vector<T> const &data,
-                     std::vector<T> &original_data) {
-  kamping::Communicator kamping_comm(comm);
-  auto global_data = kamping_comm.gatherv(kamping::send_buf(data));
-  auto global_data_original =
-      kamping_comm.gatherv(kamping::send_buf(original_data));
-
-  std::sort(global_data_original.begin(), global_data_original.end());
-  return global_data_original == global_data;
-  // std::is_sorted(global_data.begin(), global_data.end());
+                     std::vector<T> const &original_data) {
+  using namespace kamping;
+  Communicator kamping_comm(comm);
+  const bool is_locally_sorted = std::is_sorted(data.begin(), data.end());
+  const std::size_t global_org_data_size = kamping_comm.allreduce_single(
+      send_buf(original_data.size()), op(ops::plus<>{}));
+  const std::size_t global_data_size =
+      kamping_comm.allreduce_single(send_buf(data.size()), op(ops::plus<>{}));
+  if (global_data_size != global_org_data_size) {
+    if (kamping_comm.is_root()) {
+      spdlog::error("global_data_size: {} != global_org_data_size {}",
+                    global_data_size, global_org_data_size);
+    }
+    return false;
+  }
+  if (!kamping_comm.allreduce_single(send_buf(is_locally_sorted),
+                                     op(ops::logical_and<bool>{}))) {
+    if (kamping_comm.is_root()) {
+      spdlog::error("not locally sorted");
+    }
+    return false;
+  }
+  std::vector<T> min_max_elem;
+  if (!data.empty()) {
+    min_max_elem.push_back(data.front());
+    min_max_elem.push_back(data.back());
+  }
+  auto min_max_elems = kamping_comm.allgatherv(kamping::send_buf(min_max_elem));
+  const auto is_globally_sorted =
+      std::is_sorted(min_max_elems.begin(), min_max_elems.end());
+  if (!is_globally_sorted && kamping_comm.is_root()) {
+    spdlog::error("not globally sorted");
+  }
+  return is_globally_sorted;
 }
 
 template <typename T>
@@ -62,8 +91,7 @@ void log_results(std::string const &json_output_path,
   if (mpl::environment::comm_world().rank() == 0) {
     *output_stream << ",\n";
     *output_stream << "\"info\": {\n";
-    *output_stream << "  \"algorithm\": "
-                   << "\"" << algorithm << "\",\n";
+    *output_stream << "  \"algorithm\": " << "\"" << algorithm << "\",\n";
     *output_stream << "  \"p\": " << mpl::environment::comm_world().size()
                    << ",\n";
     *output_stream << "  \"n_local\": " << n_local << ",\n";
@@ -78,6 +106,12 @@ int main(int argc, char *argv[]) {
   mpl::environment::comm_world();  // this perform MPI_init, MPL has no other
                                    // way to do it and calls it implicitly when
                                    // first accessing a communicator
+  auto formatter = std::make_unique<spdlog::pattern_formatter>();
+  formatter->add_flag<rank_formatter>('r');
+  formatter->add_flag<size_formatter>('s');
+  formatter->set_pattern("[%r/%s] [%^%l%$] %v");
+  spdlog::set_formatter(std::move(formatter));
+
   CLI::App app{"Parallel sorting"};
   std::string algorithm;
   app.add_option("--algorithm", algorithm);
@@ -97,7 +131,7 @@ int main(int argc, char *argv[]) {
 
   using element_type = uint64_t;
 
-  auto original_data = generate_data<element_type>(n_local, seed);
+  auto const original_data = generate_data<element_type>(n_local, seed);
   size_t local_seed = seed + kamping::world_rank() + kamping::world_size();
   bool correct = false;
   auto do_run = [&](auto &&algo) {
