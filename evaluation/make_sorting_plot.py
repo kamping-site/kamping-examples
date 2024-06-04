@@ -13,6 +13,14 @@ def main():
     parser.add_argument("INPUT", help="Input file")
     parser.add_argument("--output_name", help="Output file name", required=True)
     parser.add_argument(
+        "--cores-per-node", help="Number of cores per compute node.", required=True
+    )
+    parser.add_argument(
+        "--mpi-type",
+        help="MPI Type for which to filter. If omitted, input will not be filtered for MPI implementation.",
+        default=None,
+    )
+    parser.add_argument(
         "--output_format", choices=["pdf", "pgf", "both"], default="pdf"
     )
 
@@ -46,11 +54,11 @@ def main():
 
     style = {
         "mpi": {"label": r"MPI~\cite{Forum2023}", "color": "tab:blue", "marker": "s"},
-        # "boost": {
-        #    "label": r"Boost.MPI~\cite{Gregor2007}",
-        #    "color": "tab:orange",
-        #    "marker": "o",
-        # },
+        "boost": {
+            "label": r"Boost.MPI~\cite{Gregor2007}",
+            "color": "tab:orange",
+            "marker": "o",
+        },
         "mpl": {"label": r"MPL~\cite{Bauke2015}", "color": "tab:green", "marker": "v"},
         "rwth": {
             "label": r"RWTH-MPI~\cite{Demiralp2023}",
@@ -63,7 +71,13 @@ def main():
     pt = 1 / 72
     fullwidth = 251 * pt
     df = pd.read_csv(args.INPUT, sep=",", header=0)
-    df = df[df.iteration > 0].sort_values("p")
+    if args.mpi_type is not None:
+        df = df[df.mpi_type == args.mpi_type]
+    df = df[(df.iteration > 0)].sort_values("p")
+
+    algorithms = df.algorithm.unique()
+    style = {k: v for k, v in style.items() if k in algorithms}
+
     hue_kws = {
         "color": [args["color"] for args in style.values()],
         "marker": [args["marker"] for args in style.values()],
@@ -83,7 +97,7 @@ def main():
         linewidth=0.5,
         err_style="band",
         err_kws={"edgecolor": None},
-        errorbar="sd",
+        errorbar="pi",
     )
     fig = fg.figure
     ax = fig.axes[0]
@@ -92,7 +106,9 @@ def main():
     ax.set_xlabel(r"number of processors")
     ax.set_xscale("log", base=2)
     xticks = df.p.unique()
-    ax.set_xticks(xticks, labels=[str(int(x // 76)) for x in xticks])
+    ax.set_xticks(
+        xticks, labels=[str(int(x // int(args.cores_per_node))) for x in xticks]
+    )
     new_labels = [style[algo]["label"] for algo in style.keys()]
     fig.legend(
         handles=ax.lines,
@@ -107,7 +123,10 @@ def main():
     ax.tick_params(axis="x", direction="out", which="both", width=0.1)
     ax.grid("both", linewidth=0.5, alpha=0.5, linestyle="dotted")
     ax.annotate(
-        r"$\times 76$", xy=(0.93, 0.15), xycoords="figure fraction", fontsize="small"
+        r"$\times {cores_per_node}$".format(cores_per_node=args.cores_per_node),
+        xy=(0.93, 0.15),
+        xycoords="figure fraction",
+        fontsize="small",
     )
 
     output_format = args.output_format

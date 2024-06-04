@@ -11,7 +11,12 @@ import sys
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("INPUT", help="Input file")
-    parser.add_argument("--output_name", help="Output file name", required=True)
+    parser.add_argument("--output-name", help="Output file name", required=True)
+    parser.add_argument(
+        "--mpi-type",
+        help="MPI Type for which to filter. If omitted, input will not be filtered for MPI implementation.",
+        default=None,
+    )
     parser.add_argument(
         "--output_format", choices=["pdf", "pgf", "both"], default="pdf"
     )
@@ -45,7 +50,10 @@ def main():
     pt = 1 / 72
     fullwidth = 251 * pt
     df = pd.read_csv(args.INPUT, sep=",", header=0)
-    df = df[(df.mpi_type == "intel") & (df.iteration > 0)].sort_values("p")
+
+    if args.mpi_type is not None:
+        df = df[df.mpi_type == args.mpi_type]
+    df = df[(df.iteration > 0)].sort_values("p")
 
     style = {
         "mpi": {"label": "MPI", "color": "tab:blue", "marker": "s"},
@@ -64,7 +72,8 @@ def main():
         },
         "kamping_grid": {"label": r"\kamping grid", "color": "tab:pink", "marker": "x"},
     }
-    # df['algorithm'] = df['algorithm'].apply(lambda x: style[x]['label'])
+    algorithms = df.algorithm.unique()
+    style = {k: v for k, v in style.items() if k in algorithms}
 
     hue_kws = {
         "color": [args["color"] for args in style.values()],
@@ -97,7 +106,7 @@ def main():
         linewidth=0.5,
         err_style="band",
         err_kws={"edgecolor": None},
-        errorbar="sd",
+        errorbar=("pi", 100),
     )
     figure = fg.figure
     for ax in figure.axes:
