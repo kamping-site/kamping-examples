@@ -49,6 +49,7 @@ FetchContent_Declare(
   GIT_TAG 4.1.1
   SYSTEM OVERRIDE_FIND_PACKAGE)
 
+set(KAGEN_USE_SPARSEHASH OFF)
 FetchContent_Declare(
   kagen
   GIT_REPOSITORY https://github.com/KarlsruheGraphGeneration/KaGen.git
