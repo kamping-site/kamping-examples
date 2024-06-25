@@ -62,7 +62,7 @@ auto benchmark(kamping::Communicator<> const& comm, std::size_t n_reps,
     -> std::vector<double> {
   std::vector<value_type> data(data_size);
   MPI_Datatype type;
-  int num_elements;
+  int num_elements = 0;
 
   switch (mpi_type_constructor) {
     case Type::create_struct: {

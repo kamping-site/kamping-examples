@@ -2,16 +2,13 @@ cmake_minimum_required(VERSION 3.26)
 project(kamping-examples)
 
 option(KAMPING_EXAMPLES_USE_BOOST "Use Boost.MPI" OFF)
+option(KAMPING_EXAMPLES_USE_BOOST_AS_SUBMODULE "Use Boost.MPI" OFF)
 
 find_package(MPI REQUIRED)
-if(KAMPING_EXAMPLES_USE_BOOST)
-  find_package(
-    Boost
-    COMPONENTS mpi
-    REQUIRED)
-endif()
 
 include(FetchContent)
+
+set(FETCHCONTENT_QUIET FALSE)
 
 FetchContent_Declare(
   Format.cmake
@@ -50,11 +47,39 @@ FetchContent_Declare(
   SYSTEM OVERRIDE_FIND_PACKAGE)
 
 set(KAGEN_USE_SPARSEHASH OFF)
+set(KAGEN_BUILD_APPS OFF)
+set(KAGEN_BUILD_EXAMPLES OFF)
 FetchContent_Declare(
   kagen
   GIT_REPOSITORY https://github.com/KarlsruheGraphGeneration/KaGen.git
   GIT_TAG v1.0.2
   SYSTEM OVERRIDE_FIND_PACKAGE)
+
+if (KAMPING_EXAMPLES_USE_BOOST_AS_SUBMODULE)
+  FetchContent_Declare(
+    Boost
+    URL https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.xz
+    URL_MD5 893b5203b862eb9bbd08553e24ff146a
+    DOWNLOAD_EXTRACT_TIMESTAMP ON
+    SYSTEM
+    OVERRIDE_FIND_PACKAGE
+  )
+  set(BOOST_ENABLE_MPI TRUE)
+  set(BOOST_INCLUDE_LIBRARIES mpi)
+  set(KAMPING_EXAMPLES_USE_BOOST ON)
+  message(WARNING "Downloading Boost, this may take some time!")
+endif()
+if(KAMPING_EXAMPLES_USE_BOOST)
+  find_package(
+    Boost
+    COMPONENTS mpi
+    REQUIRED)
+endif()
+if (KAMPING_EXAMPLES_USE_BOOST_AS_SUBMODULE)
+  message(WARNING "Finished downloading Boost")
+endif()
+
+
 
 find_package(CLI11 REQUIRED)
 find_package(spdlog REQUIRED)
@@ -115,11 +140,6 @@ if(KAMPING_EXAMPLES_USE_BOOST)
   target_link_libraries(all_mpi_wrappers INTERFACE Boost::mpi)
 endif()
 
-set(KAGEN_USE_SPARSE_OFF OFF CACHE BOOL "" FORCE)
-#set(KAGEN_NODEPS ON CACHE BOOL "" FORCE)
-#set(KAGEN_USE_XXHASH ON CACHE BOOL "" FORCE)
-set(KAGEN_BUILD_APPS OFF CACHE BOOL "" FORCE)
-set(KAGEN_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 find_package(KaGen REQUIRED)
 
 add_executable(sorting executables/sorting.cpp)
