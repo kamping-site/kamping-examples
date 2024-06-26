@@ -26,8 +26,8 @@ For generating job files:
 ### Compiling
 
 ```shell
-cmake -B build -DCMAKE_BUILD_TYPE=Release 
-cmake --build build
+cmake -B build --preset experiments
+cmake --build --preset experiments --parallel
 ```
 (Note: in the anonymized version, it is quite likely that the source code in this repository will not compile out of the box)
 
@@ -38,7 +38,7 @@ Run
 cd evaluation
 ./run_LOC_counting
 ```
-to obain the reported lines of code.
+to obtain the reported lines of code.
 
 ### 1 Allgatherv
 The main executable file is `exectuables/vector_allgather.cpp`. The vector allgather implementation for each binding can be found in `include/vector_allgather/`.
@@ -49,10 +49,8 @@ The main executable file is `exectuables/sorting.cpp`. The sample sort implement
 #### Running
 For reproducing our experiments run
 ```shell
-python ./experiments/run-experiments.py sorting                                             \
-              --machine             generic-job-file                                        \
-              --sbatch-template     ./experiments/sbatch-templates/generic_job_files.txt    \
-              --command-template    ./experiments/command-templates/command_template_generic.txt
+python ./kaval/run-experiments.py sorting                 \
+              --machine             generic-job-file
 ```
 this will create a directory containing generic MPI jobfiles for all experiment configurations.
 
@@ -63,10 +61,8 @@ The frontier exchange functionality which is different for each binding/variant 
 #### Running
 For reproducing our experiments run
 ```shell
-python ./experiments/run-experiments.py bfs                                                 \
-              --machine             generic-job-file                                        \
-              --sbatch-template     ./experiments/sbatch-templates/generic_job_files.txt    \
-              --command-template    ./experiments/command-templates/command_template_generic.txt
+python ./kaval/run-experiments.py bfs                     \ 
+              --machine             generic-job-file
 ```
 this will create a directory containing generic MPI jobfiles for all experiment configurations.
 
