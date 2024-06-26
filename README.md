@@ -14,19 +14,19 @@ We provide complete and executable source codes for our `allgatherv`, `sample so
 To compile this project you need:
 - A C++17-ready compiler such as `g++` version 9 or higher or `clang` version 11 or higher.
 - [OpenMPI](https://www.open-mpi.org/) or [Intel MPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/mpi-library.html#gs.pr0oht)
-- (Boost)
+- (Boost) disabled by default, use `-DKAMPING_EXAMPLES_USE_BOOST=ON` to enable, or fetch from cmake by providing `-DKAMPING_EXAMPLES_USE_BOOST_AS_SUBMODULE=ON`
 - CMake 3.26
 
-For generating job files:
+For generating job files from experiments suites from `experiment_suites/`:
 - python3
-- PyYAML (`pip install pyyaml`)
+- PyYAML (`pip install pyyaml` or use the `Pipfile` provided in `kaval/`)
 
 
 
 ### Compiling
 
 ```shell
-cmake -B build --preset experiments
+cmake --preset experiments
 cmake --build --preset experiments --parallel
 ```
 (Note: in the anonymized version, it is quite likely that the source code in this repository will not compile out of the box)
@@ -66,3 +66,5 @@ python ./kaval/run-experiments.py bfs                     \
 ```
 this will create a directory containing generic MPI jobfiles for all experiment configurations.
 
+### Making plots
+Scripts for parsing log files and generating plots can be found in the `evaluation/` subdirectory
