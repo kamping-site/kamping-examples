@@ -1,0 +1,14 @@
+name: sorting_powerof2
+executable: sorting
+ncores: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
+time_limit: 10
+threads_per_rank: [1]
+graphs:
+  - generator: dummy
+    name: random_array
+    n_local: 1000000
+config:
+  - algorithm: [mpi, boost, rwth, kamping, kamping_flattened, mpl]
+    iterations: [5]
+    check: [False]
+    warmup: [True]
