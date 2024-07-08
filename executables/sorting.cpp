@@ -21,6 +21,7 @@
 #include "sorting/bindings/kamping.hpp"
 #include "sorting/bindings/kamping_flattened.hpp"
 #include "sorting/bindings/mpi.hpp"
+#include "sorting/bindings/mpi_rdma.hpp"
 #include "sorting/bindings/mpl.hpp"
 #include "sorting/bindings/rwth_mpi.hpp"
 #include "sorting/common.hpp"
@@ -156,6 +157,8 @@ int main(int argc, char *argv[]) {
   };
   if (algorithm == "mpi") {
     do_run(mpi::sort<element_type>);
+  } else if (algorithm == "mpi_rdma") {
+    do_run(mpi_rdma::sort<element_type>);
   } else if (algorithm == "kamping") {
     do_run(kamping::sort<element_type>);
   } else if (algorithm == "kamping_flattened") {
